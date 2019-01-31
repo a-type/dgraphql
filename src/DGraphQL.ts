@@ -6,9 +6,10 @@ import {
   GraphQLObjectType,
   GraphQLInterfaceType,
   GraphQLFieldMap,
+  SelectionNode,
 } from 'graphql';
 import { DgraphClient } from 'dgraph-js';
-import { ResolverArgs, QueryDetailsFunc, QueryResolver } from './types';
+import { ResolverArgs, QueryDetailsFunc, QueryResolver, Query } from './types';
 import { transformDocument } from 'graphql-ast-tools';
 import uuid from 'uuid';
 
@@ -77,12 +78,81 @@ export default class DGraphQL {
         definitions: [info.operation],
       });
 
-      const operation = simplifiedInfoDocument
+      const simplifiedOperation = simplifiedInfoDocument
         .definitions[0] as OperationDefinitionNode;
+
+      const simplifiedResolveInfo: GraphQLResolveInfo = {
+        ...info,
+        operation: simplifiedOperation,
+      };
     };
 
     resolver.id = id;
 
     return resolver;
+  };
+
+  private constructAst = (
+    resolveInfo: GraphQLResolveInfo,
+    schema: GraphQLSchema,
+  ) => {
+    const { operation, parentType } = resolveInfo;
+
+    const query: Query = {
+      variables: [],
+      blocks: [],
+      name: operation.name.value,
+    };
+
+    operation.selectionSet.selections.reduce(
+      (query, selection) =>
+        this.addQueryBlock({
+          query,
+          selection,
+          schema,
+          parentType: parentType.name,
+        }),
+      query,
+    );
+  };
+
+  private addQueryBlock = ({
+    query,
+    selection,
+    schema,
+    parentType,
+  }: {
+    query: Query;
+    selection: SelectionNode;
+    schema: GraphQLSchema;
+    parentType: string;
+  }): Query => {
+    if (selection.kind === 'Field') {
+      const fieldName = selection.name.value;
+      const resolver = this.getFieldResolver(schema, parentType, fieldName);
+      const id = resolver['id'];
+
+      // todo: get query info from user function
+
+      query.blocks.push({
+        predicates: [],
+      });
+
+      return query;
+    } else {
+      // can't wrap my head around a fragment in the main block yet. not even sure it's legal?
+      return query;
+    }
+  };
+
+  private getFieldResolver = (
+    schema: GraphQLSchema,
+    typeName: string,
+    field: string,
+  ) => {
+    // fixme: assumptions
+    const type = schema.getType(typeName);
+    const fields = this.getFieldsForType(type);
+    return fields[field].resolve;
   };
 }

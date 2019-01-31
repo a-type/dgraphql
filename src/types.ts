@@ -13,7 +13,8 @@ export type UID = string;
 
 export type Func = null; // todo
 export type Filter = null; // todo
-export type Predicate = string;
+export type CustomPredicate = string;
+export type Language = string; // todo
 
 export type QueryDetailsArgNames = {
   [key: string]: string;
@@ -28,7 +29,7 @@ export type QueryDetails = {
   orderasc?: string;
   orderdesc?: string;
   customPredicates?: {
-    [fieldName: string]: Predicate;
+    [fieldName: string]: CustomPredicate;
   };
 };
 
@@ -42,3 +43,43 @@ export type QueryResolver = {
 /**
  * Types that define the AST from which we generate the DGraph query
  */
+
+export type QueryVariableType = 'int' | 'float' | 'bool' | 'string';
+
+export type QueryVariable = {
+  name: string;
+  type: QueryVariableType;
+};
+
+export interface FilterableNode {
+  filter?: Filter;
+  first?: number;
+  offset?: number;
+  after?: UID;
+  orderasc?: string;
+  orderdesc?: string;
+}
+
+export type ScalarPredicateNode = {
+  value: string;
+  alias?: string;
+  language?: Language;
+};
+
+export type EdgePredicateNode = FilterableNode & {
+  alias?: string;
+  predicates: PredicateNode[];
+};
+
+export type PredicateNode = ScalarPredicateNode | EdgePredicateNode;
+
+export type QueryBlockNode = FilterableNode & {
+  func?: Func;
+  predicates: PredicateNode[];
+};
+
+export type Query = {
+  variables: QueryVariable[];
+  name?: string;
+  blocks: QueryBlockNode[];
+};
