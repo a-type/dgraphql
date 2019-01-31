@@ -68,6 +68,7 @@ export default class DGraphQL {
     }, {});
     this.queryDetailsFuncsByPath = Object.keys(idMap).reduce((map, path) => {
       map[path] = this.queryDetailsFuncsById[idMap[path]];
+      return map;
     }, {});
     this.hasReadSchema = true;
   };
