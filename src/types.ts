@@ -49,10 +49,11 @@ export type QueryVariableType = 'int' | 'float' | 'bool' | 'string';
 export type QueryVariable = {
   name: string;
   type: QueryVariableType;
+  defaultValue?: number | boolean | string;
 };
 
 export interface FilterableNode {
-  filter?: Filter;
+  filter?: Filter[];
   first?: number;
   offset?: number;
   after?: UID;
@@ -61,12 +62,14 @@ export interface FilterableNode {
 }
 
 export type ScalarPredicateNode = {
+  kind: 'ScalarPredicate';
   value: string;
   alias?: string;
   language?: Language;
 };
 
 export type EdgePredicateNode = FilterableNode & {
+  kind: 'EdgePredicate';
   alias?: string;
   predicates: PredicateNode[];
 };
@@ -74,6 +77,7 @@ export type EdgePredicateNode = FilterableNode & {
 export type PredicateNode = ScalarPredicateNode | EdgePredicateNode;
 
 export type QueryBlockNode = FilterableNode & {
+  kind: 'QueryBlock';
   func?: Func;
   predicates: PredicateNode[];
 };

@@ -1,23 +1,19 @@
-import {
-  GraphQLResolveInfo,
-  OperationDefinitionNode,
-  GraphQLSchema,
-  GraphQLType,
-  GraphQLObjectType,
-  GraphQLInterfaceType,
-  GraphQLFieldMap,
-  SelectionNode,
-} from 'graphql';
+import { GraphQLResolveInfo } from 'graphql';
 import { DgraphClient } from 'dgraph-js';
-import { ResolverArgs, QueryDetailsFunc, QueryResolver, Query } from './types';
-import { transformDocument } from 'graphql-ast-tools';
-import uuid from 'uuid';
+import { ResolverArgs, QueryDetailsFunc, QueryResolver } from './types';
+import { v4 as uuid } from 'uuid';
+import constructAst from './constructAst';
 
+/**
+ * Although this class is used as the primary means of interacting with the library,
+ * it's mostly just a container for the stateful parts. Mainly, a map of unique ids to
+ * user-defined query details functions which we call to help glue together each
+ * block of the GraphQL -> DGraph query, transfering all variables into DGraph
+ * appropriately and according to how the user wants to translate their queries.
+ */
 export default class DGraphQL {
   private client: DgraphClient;
   private queryDetailsFuncsById: { [id: string]: QueryDetailsFunc } = {};
-  private queryDetailsFuncsByPath: { [path: string]: QueryDetailsFunc } = {};
-  private hasReadSchema = false;
 
   constructor(client: DgraphClient) {
     this.client = client;
@@ -30,37 +26,6 @@ export default class DGraphQL {
     return resolver;
   };
 
-  private readSchema = (schema: GraphQLSchema) => {
-    const typeMap = schema.getTypeMap();
-    const idMap = Object.keys(typeMap).reduce((fieldPathToIdMap, typeName) => {
-      const type = typeMap[typeName];
-      const fields = this.getFieldsForType(type);
-      return Object.keys(fields).reduce((pathToIdMap, fieldName) => {
-        const field = fields[fieldName];
-        // check to see if its one of our id'd resolvers
-        if (field.resolve && field.resolve['id']) {
-          pathToIdMap[`${typeName}.${fieldName}`] = field.resolve['id'];
-        }
-        return pathToIdMap;
-      }, fieldPathToIdMap);
-    }, {});
-    this.queryDetailsFuncsByPath = Object.keys(idMap).reduce((map, path) => {
-      map[path] = this.queryDetailsFuncsById[idMap[path]];
-      return map;
-    }, {});
-    this.hasReadSchema = true;
-  };
-
-  private getFieldsForType = (type: GraphQLType): GraphQLFieldMap<any, any> => {
-    if (
-      type instanceof GraphQLObjectType ||
-      type instanceof GraphQLInterfaceType
-    ) {
-      return type.getFields();
-    }
-    return undefined;
-  };
-
   private constructResolver = (id: string): QueryResolver => {
     const resolver: QueryResolver = (
       _parent: any,
@@ -68,91 +33,11 @@ export default class DGraphQL {
       context: any,
       info: GraphQLResolveInfo,
     ) => {
-      if (!this.hasReadSchema) {
-        this.readSchema(info.schema);
-      }
-
-      const simplifiedInfoDocument = transformDocument({
-        kind: 'Document',
-        loc: info.operation.loc,
-        definitions: [info.operation],
-      });
-
-      const simplifiedOperation = simplifiedInfoDocument
-        .definitions[0] as OperationDefinitionNode;
-
-      const simplifiedResolveInfo: GraphQLResolveInfo = {
-        ...info,
-        operation: simplifiedOperation,
-      };
+      const ast = constructAst(info, this.queryDetailsFuncsById);
     };
 
     resolver.id = id;
 
     return resolver;
-  };
-
-  private constructAst = (
-    resolveInfo: GraphQLResolveInfo,
-    schema: GraphQLSchema,
-  ) => {
-    const { operation, parentType } = resolveInfo;
-
-    const query: Query = {
-      variables: [],
-      blocks: [],
-      name: operation.name.value,
-    };
-
-    operation.selectionSet.selections.reduce(
-      (query, selection) =>
-        this.addQueryBlock({
-          query,
-          selection,
-          schema,
-          parentType: parentType.name,
-        }),
-      query,
-    );
-  };
-
-  private addQueryBlock = ({
-    query,
-    selection,
-    schema,
-    parentType,
-  }: {
-    query: Query;
-    selection: SelectionNode;
-    schema: GraphQLSchema;
-    parentType: string;
-  }): Query => {
-    if (selection.kind === 'Field') {
-      const fieldName = selection.name.value;
-      const resolver = this.getFieldResolver(schema, parentType, fieldName);
-      const id = resolver['id'];
-
-      // todo: get query info from user function
-
-      query.blocks.push({
-        predicates: [],
-      });
-
-      return query;
-    } else {
-      // can't wrap my head around a fragment in the main block yet. not even sure it's legal?
-      return query;
-    }
-  };
-
-  private getFieldResolver = (
-    schema: GraphQLSchema,
-    typeName: string,
-    field: string,
-  ) => {
-    // fixme: assumptions
-    const type = schema.getType(typeName);
-    const fields = this.getFieldsForType(type);
-    return fields[field].resolve;
   };
 }

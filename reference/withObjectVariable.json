@@ -1,0 +1,292 @@
+{
+  "fieldName": "foo",
+  "fieldNodes": [
+    {
+      "kind": "Field",
+      "name": {
+        "kind": "Name",
+        "value": "foo",
+        "loc": { "start": 32, "end": 35 }
+      },
+      "arguments": [
+        {
+          "kind": "Argument",
+          "name": {
+            "kind": "Name",
+            "value": "input",
+            "loc": { "start": 36, "end": 41 }
+          },
+          "value": {
+            "kind": "Variable",
+            "name": {
+              "kind": "Name",
+              "value": "input",
+              "loc": { "start": 44, "end": 49 }
+            },
+            "loc": { "start": 43, "end": 49 }
+          },
+          "loc": { "start": 36, "end": 49 }
+        }
+      ],
+      "directives": [],
+      "selectionSet": {
+        "kind": "SelectionSet",
+        "selections": [
+          {
+            "kind": "Field",
+            "name": {
+              "kind": "Name",
+              "value": "a",
+              "loc": { "start": 57, "end": 58 }
+            },
+            "arguments": [],
+            "directives": [],
+            "loc": { "start": 57, "end": 58 }
+          },
+          {
+            "kind": "Field",
+            "name": {
+              "kind": "Name",
+              "value": "bar",
+              "loc": { "start": 63, "end": 66 }
+            },
+            "arguments": [
+              {
+                "kind": "Argument",
+                "name": {
+                  "kind": "Name",
+                  "value": "baz",
+                  "loc": { "start": 67, "end": 70 }
+                },
+                "value": {
+                  "kind": "IntValue",
+                  "value": "1",
+                  "loc": { "start": 72, "end": 73 }
+                },
+                "loc": { "start": 67, "end": 73 }
+              }
+            ],
+            "directives": [],
+            "selectionSet": {
+              "kind": "SelectionSet",
+              "selections": [
+                {
+                  "kind": "FragmentSpread",
+                  "name": {
+                    "kind": "Name",
+                    "value": "BarFrag",
+                    "loc": { "start": 86, "end": 93 }
+                  },
+                  "directives": [],
+                  "loc": { "start": 83, "end": 93 }
+                }
+              ],
+              "loc": { "start": 75, "end": 99 }
+            },
+            "loc": { "start": 63, "end": 99 }
+          }
+        ],
+        "loc": { "start": 51, "end": 103 }
+      },
+      "loc": { "start": 32, "end": 103 }
+    }
+  ],
+  "returnType": "Foo",
+  "parentType": "Query",
+  "path": { "key": "foo" },
+  "schema": {
+    "_queryType": "Query",
+    "_mutationType": null,
+    "_subscriptionType": null,
+    "_directives": ["@cacheControl", "@skip", "@include", "@deprecated"],
+    "_typeMap": {
+      "Query": "Query",
+      "String": "String",
+      "FooInput": "FooInput",
+      "Int": "Int",
+      "Foo": "Foo",
+      "Bar": "Bar",
+      "__Schema": "__Schema",
+      "__Type": "__Type",
+      "__TypeKind": "__TypeKind",
+      "Boolean": "Boolean",
+      "__Field": "__Field",
+      "__InputValue": "__InputValue",
+      "__EnumValue": "__EnumValue",
+      "__Directive": "__Directive",
+      "__DirectiveLocation": "__DirectiveLocation",
+      "CacheControlScope": "CacheControlScope",
+      "Upload": "Upload"
+    },
+    "_implementations": {},
+    "__validationErrors": [],
+    "__allowedLegacyNames": [],
+    "_extensionsEnabled": true
+  },
+  "fragments": {
+    "BarFrag": {
+      "kind": "FragmentDefinition",
+      "name": {
+        "kind": "Name",
+        "value": "BarFrag",
+        "loc": { "start": 116, "end": 123 }
+      },
+      "typeCondition": {
+        "kind": "NamedType",
+        "name": {
+          "kind": "Name",
+          "value": "Bar",
+          "loc": { "start": 127, "end": 130 }
+        },
+        "loc": { "start": 127, "end": 130 }
+      },
+      "directives": [],
+      "selectionSet": {
+        "kind": "SelectionSet",
+        "selections": [
+          {
+            "kind": "Field",
+            "name": {
+              "kind": "Name",
+              "value": "b",
+              "loc": { "start": 135, "end": 136 }
+            },
+            "arguments": [],
+            "directives": [],
+            "loc": { "start": 135, "end": 136 }
+          }
+        ],
+        "loc": { "start": 131, "end": 138 }
+      },
+      "loc": { "start": 107, "end": 138 }
+    }
+  },
+  "operation": {
+    "kind": "OperationDefinition",
+    "operation": "query",
+    "name": { "kind": "Name", "value": "Foo", "loc": { "start": 6, "end": 9 } },
+    "variableDefinitions": [
+      {
+        "kind": "VariableDefinition",
+        "variable": {
+          "kind": "Variable",
+          "name": {
+            "kind": "Name",
+            "value": "input",
+            "loc": { "start": 11, "end": 16 }
+          },
+          "loc": { "start": 10, "end": 16 }
+        },
+        "type": {
+          "kind": "NamedType",
+          "name": {
+            "kind": "Name",
+            "value": "FooInput",
+            "loc": { "start": 18, "end": 26 }
+          },
+          "loc": { "start": 18, "end": 26 }
+        },
+        "loc": { "start": 10, "end": 26 }
+      }
+    ],
+    "directives": [],
+    "selectionSet": {
+      "kind": "SelectionSet",
+      "selections": [
+        {
+          "kind": "Field",
+          "name": {
+            "kind": "Name",
+            "value": "foo",
+            "loc": { "start": 32, "end": 35 }
+          },
+          "arguments": [
+            {
+              "kind": "Argument",
+              "name": {
+                "kind": "Name",
+                "value": "input",
+                "loc": { "start": 36, "end": 41 }
+              },
+              "value": {
+                "kind": "Variable",
+                "name": {
+                  "kind": "Name",
+                  "value": "input",
+                  "loc": { "start": 44, "end": 49 }
+                },
+                "loc": { "start": 43, "end": 49 }
+              },
+              "loc": { "start": 36, "end": 49 }
+            }
+          ],
+          "directives": [],
+          "selectionSet": {
+            "kind": "SelectionSet",
+            "selections": [
+              {
+                "kind": "Field",
+                "name": {
+                  "kind": "Name",
+                  "value": "a",
+                  "loc": { "start": 57, "end": 58 }
+                },
+                "arguments": [],
+                "directives": [],
+                "loc": { "start": 57, "end": 58 }
+              },
+              {
+                "kind": "Field",
+                "name": {
+                  "kind": "Name",
+                  "value": "bar",
+                  "loc": { "start": 63, "end": 66 }
+                },
+                "arguments": [
+                  {
+                    "kind": "Argument",
+                    "name": {
+                      "kind": "Name",
+                      "value": "baz",
+                      "loc": { "start": 67, "end": 70 }
+                    },
+                    "value": {
+                      "kind": "IntValue",
+                      "value": "1",
+                      "loc": { "start": 72, "end": 73 }
+                    },
+                    "loc": { "start": 67, "end": 73 }
+                  }
+                ],
+                "directives": [],
+                "selectionSet": {
+                  "kind": "SelectionSet",
+                  "selections": [
+                    {
+                      "kind": "FragmentSpread",
+                      "name": {
+                        "kind": "Name",
+                        "value": "BarFrag",
+                        "loc": { "start": 86, "end": 93 }
+                      },
+                      "directives": [],
+                      "loc": { "start": 83, "end": 93 }
+                    }
+                  ],
+                  "loc": { "start": 75, "end": 99 }
+                },
+                "loc": { "start": 63, "end": 99 }
+              }
+            ],
+            "loc": { "start": 51, "end": 103 }
+          },
+          "loc": { "start": 32, "end": 103 }
+        }
+      ],
+      "loc": { "start": 28, "end": 105 }
+    },
+    "loc": { "start": 0, "end": 105 }
+  },
+  "variableValues": { "input": { "a": "hi", "b": 3 } },
+  "cacheControl": { "cacheHint": { "maxAge": 0 } }
+}
