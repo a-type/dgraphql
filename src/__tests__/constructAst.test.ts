@@ -88,6 +88,7 @@ describe('constructAst', () => {
           blocks: [
             {
               kind: 'QueryBlock',
+              name: 'outer',
               predicates: [
                 {
                   kind: 'ScalarPredicate',
@@ -154,6 +155,7 @@ describe('constructAst', () => {
           blocks: [
             {
               kind: 'QueryBlock',
+              name: 'outer',
               predicates: [
                 {
                   kind: 'ScalarPredicate',
@@ -254,6 +256,7 @@ describe('constructAst', () => {
           blocks: [
             {
               kind: 'QueryBlock',
+              name: 'outer',
               func: `eq("id", "foo")`,
               first: 10,
               offset: 0,
@@ -337,6 +340,7 @@ describe('constructAst', () => {
           blocks: [
             {
               kind: 'QueryBlock',
+              name: 'outer',
               func: `eq("id", "foo")`,
               first: 10,
               offset: 0,
@@ -428,6 +432,7 @@ describe('constructAst', () => {
           blocks: [
             {
               kind: 'QueryBlock',
+              name: 'outer',
               func: `anyofterms("name", $input_nested_match)`,
               first: '$input_first',
               offset: 0,

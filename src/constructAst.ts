@@ -47,6 +47,7 @@ const createQueryBlocks = ({
 
       return list.concat({
         kind: 'QueryBlock',
+        name: selection.name.value,
         ...queryDetails,
         predicates: createPredicateBlocks({
           selectionSet: selection.selectionSet,

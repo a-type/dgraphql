@@ -79,6 +79,7 @@ export type PredicateNode = ScalarPredicateNode | EdgePredicateNode;
 
 export type QueryBlockNode = FilterableNode & {
   kind: 'QueryBlock';
+  name: string;
   func?: Func;
   predicates: PredicateNode[];
 };
