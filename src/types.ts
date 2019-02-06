@@ -11,20 +11,20 @@ export type ResolverArgs = GenericArgs;
  */
 export type UID = string;
 
-export type Func = null; // todo
-export type Filter = null; // todo
+export type Func = string; // todo
+export type Filter = string; // todo
 export type CustomPredicate = string;
 export type Language = string; // todo
 
 export type QueryDetailsArgNames = {
-  [key: string]: string;
+  [key: string]: string | QueryDetailsArgNames;
 };
 
 export type QueryDetails = {
   func?: Func;
   filter?: Filter | Filter[];
-  first?: number;
-  offset?: number;
+  first?: number | string;
+  offset?: number | string;
   after?: UID;
   orderasc?: string;
   orderdesc?: string;
@@ -63,13 +63,14 @@ export interface FilterableNode {
 
 export type ScalarPredicateNode = {
   kind: 'ScalarPredicate';
-  value: string;
+  name: string;
   alias?: string;
   language?: Language;
 };
 
 export type EdgePredicateNode = FilterableNode & {
   kind: 'EdgePredicate';
+  name: string;
   alias?: string;
   predicates: PredicateNode[];
 };

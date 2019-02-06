@@ -6,6 +6,7 @@ import {
   isTypeNode,
   GraphQLType,
 } from 'graphql';
+import getFieldsForType from './getFieldsForType';
 
 const getSchemaTypeName = (type: GraphQLType): string => {
   if (type instanceof GraphQLList || type instanceof GraphQLNonNull) {
@@ -41,7 +42,7 @@ const getFieldTypeName = (
   fieldName: string,
 ) => {
   const type = schema.getType(parentType);
-  const field = this.getFieldsForType(type)[fieldName];
+  const field = getFieldsForType(type)[fieldName];
   return getTypeName(field.type);
 };
 

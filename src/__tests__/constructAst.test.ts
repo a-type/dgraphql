@@ -1,5 +1,6 @@
 import constructAst from '../constructAst';
 import { makeExecutableSchema, gql } from 'apollo-server';
+import { execute } from 'graphql';
 
 const typeDefs = gql`
   enum TestEnum {
@@ -8,12 +9,16 @@ const typeDefs = gql`
   }
 
   input NestedInput {
-    bar: String
+    match: String
   }
 
   input TestInput {
-    foo: Int
+    first: Int
     nested: NestedInput
+  }
+
+  input TestInnerInput {
+    id: ID
   }
 
   type Inner {
@@ -24,16 +29,437 @@ const typeDefs = gql`
   type Outer {
     id: ID!
     enum: TestEnum
-    inner: Inner
+    name: String
+    inner(id: ID, input: TestInnerInput): Inner
   }
 
   type Query {
-    outer(input: TestInput): Outer!
+    outer(scalar: Int, input: TestInput): Outer
   }
 `;
 
 describe('constructAst', () => {
-  describe('without query definitions', () => {
-    const query =
+  describe('without dgraph query definitions', () => {
+    let capturedParams = [];
+    const resolvers = {
+      Query: {
+        outer: (...params) => {
+          capturedParams = params;
+          return null;
+        },
+      },
+    };
+
+    // assign an id to the resolver for consistency with lib behavior
+    resolvers.Query.outer['id'] = 'Query.outer';
+
+    const schema = makeExecutableSchema({
+      typeDefs,
+      resolvers,
+    });
+
+    describe('basic, no variables', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test {
+            outer {
+              id
+              enum
+              inner {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {});
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
+
+    describe('basic with variables', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test($scalar: Int = 3) {
+            outer(scalar: $scalar) {
+              id
+              enum
+              inner {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {});
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [
+            {
+              name: 'scalar',
+              type: 'int',
+              defaultValue: 3,
+            },
+          ],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
+  });
+
+  describe('with dgraph query definitions', () => {
+    let capturedParams = [];
+    const resolvers = {
+      Query: {
+        outer: (...params) => {
+          capturedParams = params;
+          return null;
+        },
+      },
+
+      Outer: {
+        enum: () => null,
+        inner: () => null,
+      },
+    };
+
+    // assign an id to the resolver for consistency with lib behavior
+    resolvers.Query.outer['id'] = 'Query.outer';
+    resolvers.Outer.enum['id'] = 'Outer.enum';
+    resolvers.Outer.inner['id'] = 'Outer.inner';
+
+    const schema = makeExecutableSchema({
+      typeDefs,
+      resolvers,
+    });
+
+    describe('basic, no variables', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test {
+            outer {
+              id
+              enum
+              inner(id: "bar") {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        const outerQueryFunc = argNames => ({
+          func: `eq("id", "foo")`,
+          first: 10,
+          offset: 0,
+        });
+
+        const innerQueryFunc = argNames => ({
+          filter: `eq("id", ${argNames.id})`,
+        });
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {
+          'Query.outer': outerQueryFunc,
+          'Outer.inner': innerQueryFunc,
+        });
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              func: `eq("id", "foo")`,
+              first: 10,
+              offset: 0,
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  filter: `eq("id", "bar")`,
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
+
+    describe('basic with variables', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test($innerId: ID) {
+            outer {
+              id
+              enum
+              inner(id: $innerId) {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        const outerQueryFunc = argNames => ({
+          func: `eq("id", "foo")`,
+          first: 10,
+          offset: 0,
+        });
+
+        const innerQueryFunc = argNames => ({
+          filter: `eq("id", ${argNames.id})`,
+        });
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {
+          'Query.outer': outerQueryFunc,
+          'Outer.inner': innerQueryFunc,
+        });
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [
+            {
+              name: 'innerId',
+              type: 'string',
+              defaultValue: undefined,
+            },
+          ],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              func: `eq("id", "foo")`,
+              first: 10,
+              offset: 0,
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  filter: `eq("id", $innerId)`,
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
+
+    describe('with complex object variables', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test($input: TestInput, $innerInput: TestInnerInput) {
+            outer(input: $input) {
+              id
+              enum
+              inner(input: $innerInput) {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        const outerQueryFunc = argNames => ({
+          func: `anyofterms("name", ${argNames.input.nested.match})`,
+          first: argNames.input.first,
+          offset: 0,
+        });
+
+        const innerQueryFunc = argNames => ({
+          filter: `eq("id", ${argNames.input.id})`,
+        });
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {
+          'Query.outer': outerQueryFunc,
+          'Outer.inner': innerQueryFunc,
+        });
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [
+            {
+              name: 'input_first',
+              type: 'int',
+            },
+            {
+              name: 'input_nested_match',
+              type: 'string',
+            },
+            {
+              name: 'innerInput_id',
+              type: 'string',
+              defaultValue: undefined,
+            },
+          ],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              func: `anyofterms("name", $input_nested_match)`,
+              first: '$input_first',
+              offset: 0,
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  filter: `eq("id", $innerInput_id)`,
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
   });
 });

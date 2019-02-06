@@ -48,17 +48,24 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a',
+            type: 'int',
+          },
+          {
+            name: 'b',
+            type: 'string',
+          },
+          {
+            name: 'c',
+            type: 'bool',
+          },
+        ],
         {
-          name: 'a',
-          type: 'int',
-        },
-        {
-          name: 'b',
-          type: 'string',
-        },
-        {
-          name: 'c',
-          type: 'bool',
+          a: '$a',
+          b: '$b',
+          c: '$c',
         },
       ]);
     });
@@ -73,20 +80,27 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a',
+            type: 'int',
+            defaultValue: 1,
+          },
+          {
+            name: 'b',
+            type: 'string',
+            defaultValue: '"foo"',
+          },
+          {
+            name: 'c',
+            type: 'bool',
+            defaultValue: true,
+          },
+        ],
         {
-          name: 'a',
-          type: 'int',
-          defaultValue: 1,
-        },
-        {
-          name: 'b',
-          type: 'string',
-          defaultValue: '"foo"',
-        },
-        {
-          name: 'c',
-          type: 'bool',
-          defaultValue: true,
+          a: '$a',
+          b: '$b',
+          c: '$c',
         },
       ]);
     });
@@ -103,9 +117,14 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a',
+            type: 'string',
+          },
+        ],
         {
-          name: 'a',
-          type: 'string',
+          a: '$a',
         },
       ]);
     });
@@ -120,10 +139,15 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a',
+            type: 'string',
+            defaultValue: '"One"',
+          },
+        ],
         {
-          name: 'a',
-          type: 'string',
-          defaultValue: '"One"',
+          a: '$a',
         },
       ]);
     });
@@ -140,13 +164,23 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a_foo',
+            type: 'int',
+          },
+          {
+            name: 'a_nested_bar',
+            type: 'string',
+          },
+        ],
         {
-          name: 'a_foo',
-          type: 'int',
-        },
-        {
-          name: 'a_nested_bar',
-          type: 'string',
+          a: {
+            foo: '$a_foo',
+            nested: {
+              bar: '$a_nested_bar',
+            },
+          },
         },
       ]);
     });
@@ -161,15 +195,25 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a_foo',
+            type: 'int',
+            defaultValue: 1,
+          },
+          {
+            name: 'a_nested_bar',
+            type: 'string',
+            defaultValue: '"bar"',
+          },
+        ],
         {
-          name: 'a_foo',
-          type: 'int',
-          defaultValue: 1,
-        },
-        {
-          name: 'a_nested_bar',
-          type: 'string',
-          defaultValue: '"bar"',
+          a: {
+            foo: '$a_foo',
+            nested: {
+              bar: '$a_nested_bar',
+            },
+          },
         },
       ]);
     });
@@ -184,14 +228,24 @@ describe('flattenAndConvertVariables', () => {
       `);
 
       expect(flattenAndConvertVariables(vars, schema)).toEqual([
+        [
+          {
+            name: 'a_foo',
+            type: 'int',
+            defaultValue: 1,
+          },
+          {
+            name: 'a_nested_bar',
+            type: 'string',
+          },
+        ],
         {
-          name: 'a_foo',
-          type: 'int',
-          defaultValue: 1,
-        },
-        {
-          name: 'a_nested_bar',
-          type: 'string',
+          a: {
+            foo: '$a_foo',
+            nested: {
+              bar: '$a_nested_bar',
+            },
+          },
         },
       ]);
     });

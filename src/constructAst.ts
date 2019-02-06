@@ -9,6 +9,8 @@ import {
   QueryBlockNode,
   PredicateNode,
   Query,
+  QueryVariable,
+  QueryDetailsArgNames,
 } from './types';
 import flattenAndConvertVariables from './flattenAndConvertVariables';
 import getFieldTypeName from './getTypeNameFromSchema';
@@ -21,6 +23,8 @@ type AddBlockArgs = {
   resolveInfo: GraphQLResolveInfo;
   parentType: string;
   queryDetailsFuncsById: { [id: string]: QueryDetailsFunc };
+  variables: QueryVariable[];
+  variableNameMap: QueryDetailsArgNames;
 };
 
 const createQueryBlocks = ({
@@ -28,6 +32,8 @@ const createQueryBlocks = ({
   resolveInfo,
   parentType,
   queryDetailsFuncsById,
+  variableNameMap,
+  variables,
 }: AddBlockArgs): QueryBlockNode[] => {
   return selectionSet.selections.reduce((list, selection) => {
     if (selection.kind === 'Field') {
@@ -36,6 +42,7 @@ const createQueryBlocks = ({
         schema: resolveInfo.schema,
         parentType,
         queryDetailsFuncsById,
+        variableNameMap,
       });
 
       return list.concat({
@@ -46,6 +53,8 @@ const createQueryBlocks = ({
           resolveInfo,
           parentType: fieldTypeName,
           queryDetailsFuncsById,
+          variableNameMap,
+          variables,
         }),
       });
     } else if (selection.kind === 'InlineFragment') {
@@ -55,6 +64,8 @@ const createQueryBlocks = ({
           resolveInfo,
           parentType,
           queryDetailsFuncsById,
+          variableNameMap,
+          variables,
         }),
       );
     } else {
@@ -67,6 +78,8 @@ const createQueryBlocks = ({
           resolveInfo,
           parentType,
           queryDetailsFuncsById,
+          variableNameMap,
+          variables,
         }),
       );
     }
@@ -78,6 +91,8 @@ const createPredicateBlocks = ({
   resolveInfo,
   parentType,
   queryDetailsFuncsById,
+  variables,
+  variableNameMap,
 }: AddBlockArgs): PredicateNode[] => {
   return selectionSet.selections.reduce((list, selection) => {
     if (selection.kind === 'Field') {
@@ -86,6 +101,7 @@ const createPredicateBlocks = ({
         schema: resolveInfo.schema,
         parentType,
         queryDetailsFuncsById,
+        variableNameMap,
       });
 
       const selectionSet = selection.selectionSet;
@@ -94,17 +110,21 @@ const createPredicateBlocks = ({
         // it's an edge predicate.
         return list.concat({
           kind: 'EdgePredicate',
+          name: selection.name.value,
           ...queryDetails,
           predicates: createPredicateBlocks({
             selectionSet: selection.selectionSet,
             resolveInfo,
             parentType: fieldTypeName,
             queryDetailsFuncsById,
+            variableNameMap,
+            variables,
           }),
         });
       } else {
         return list.concat({
           kind: 'ScalarPredicate',
+          name: selection.name.value,
           ...queryDetails,
         });
       }
@@ -116,6 +136,8 @@ const createPredicateBlocks = ({
           resolveInfo,
           parentType,
           queryDetailsFuncsById,
+          variableNameMap,
+          variables,
         }),
       );
     } else {
@@ -128,6 +150,8 @@ const createPredicateBlocks = ({
           resolveInfo,
           parentType,
           queryDetailsFuncsById,
+          variableNameMap,
+          variables,
         }),
       );
     }
@@ -145,22 +169,41 @@ const getFieldResolver = (
   return fields[field].resolve;
 };
 
+const getVariableName = (possibleVarName: any) => {
+  if (typeof possibleVarName === 'string' && possibleVarName.startsWith('$')) {
+    return possibleVarName.replace('$', '');
+  }
+  return null;
+};
+
 const getFieldInfo = ({
   selection,
   schema,
   parentType,
   queryDetailsFuncsById,
+  variableNameMap,
 }: {
   selection: SelectionNode;
   schema: GraphQLSchema;
   parentType: string;
   queryDetailsFuncsById: { [id: string]: QueryDetailsFunc };
+  variableNameMap: QueryDetailsArgNames;
 }) => {
   if (selection.kind === 'Field') {
     const fieldName = selection.name.value;
     const resolver = getFieldResolver(schema, parentType, fieldName);
     const id = (resolver && resolver['id']) || null;
-    const argNames = getArgValueNames(selection.arguments);
+    const shallowArgNames = getArgValueNames(selection.arguments);
+    const argNames = Object.keys(shallowArgNames).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]:
+          (getVariableName(shallowArgNames[key]) &&
+            variableNameMap[getVariableName(shallowArgNames[key])]) ||
+          shallowArgNames[key],
+      }),
+      {},
+    );
     const queryDetails = (queryDetailsFuncsById[id] || defaultQueryDetailsFunc)(
       argNames,
     );
@@ -190,17 +233,20 @@ const constructAst = (
   queryDetailsFuncsById: { [id: string]: QueryDetailsFunc },
 ): Query => {
   const { operation, parentType } = resolveInfo;
+  const [variables, variableNameMap] = flattenAndConvertVariables(
+    operation.variableDefinitions,
+    resolveInfo.schema,
+  );
 
   return {
-    variables: flattenAndConvertVariables(
-      operation.variableDefinitions,
-      resolveInfo.schema,
-    ),
+    variables,
     blocks: createQueryBlocks({
       selectionSet: operation.selectionSet,
       resolveInfo,
       parentType: parentType.name,
       queryDetailsFuncsById,
+      variables,
+      variableNameMap,
     }),
     name: operation.name.value,
   };

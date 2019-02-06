@@ -15,7 +15,11 @@ import {
   ListTypeNode,
   ObjectValueNode,
 } from 'graphql';
-import { QueryVariable, QueryVariableType } from './types';
+import {
+  QueryVariable,
+  QueryVariableType,
+  QueryDetailsArgNames,
+} from './types';
 import { getTypeName } from './getTypeNameFromSchema';
 import { getArgValueName } from './getArgValueNames';
 
@@ -36,10 +40,14 @@ const convertQueryVariableType = (graphQLType: string): QueryVariableType => {
 
 type SchemaTypeInfo = {
   nameRoot: string;
+  name: string;
   type: GraphQLType;
   defaultValue?: ValueNode;
   schema: GraphQLSchema;
 };
+
+type FlattenResult = [QueryVariable[], QueryDetailsArgNames];
+type NestedFlattenResult = [QueryVariable[], QueryDetailsArgNames | string];
 
 const combineNames = (baseName: string, key: string) => `${baseName}_${key}`;
 
@@ -51,68 +59,81 @@ const getNestedDefaultValueNode = (value: ObjectValueNode, key: string) => {
   return field.value;
 };
 
-const flattenAndConvertSchemaType = ({
-  nameRoot,
-  type,
-  defaultValue,
-  schema,
-}: SchemaTypeInfo): QueryVariable | QueryVariable[] => {
+const flattenAndConvertSchemaType = (
+  [variables, nameMap]: NestedFlattenResult,
+  { nameRoot, type, defaultValue, schema, name }: SchemaTypeInfo,
+): NestedFlattenResult => {
   if (isScalarType(type)) {
-    return {
+    variables.push({
       name: nameRoot,
       type: convertQueryVariableType(getTypeName(type)),
       defaultValue: defaultValue && getArgValueName(defaultValue),
-    };
+    });
+    nameMap[name] = `$${nameRoot}`;
+
+    return [variables, nameMap];
   } else if (isEnumType(type)) {
-    return {
+    variables.push({
       name: nameRoot,
       type: 'string',
       defaultValue: defaultValue && getArgValueName(defaultValue),
-    };
+    });
+    nameMap[name] = `$${nameRoot}`;
+
+    return [variables, nameMap];
   } else if (isInputObjectType(type)) {
     const fields = type.getFields();
-    return Object.keys(fields).reduce((list, fieldName) => {
-      const nestedDefault =
-        defaultValue && defaultValue.kind === 'ObjectValue'
-          ? getNestedDefaultValueNode(defaultValue, fieldName)
-          : undefined;
-      return list.concat(
-        flattenAndConvertSchemaType({
+    const allSublevelsResult = Object.keys(fields).reduce<NestedFlattenResult>(
+      (acc, fieldName) => {
+        const nestedDefault =
+          defaultValue && defaultValue.kind === 'ObjectValue'
+            ? getNestedDefaultValueNode(defaultValue, fieldName)
+            : undefined;
+        return flattenAndConvertSchemaType(acc, {
           nameRoot: combineNames(nameRoot, fieldName),
+          name: fieldName,
           type: fields[fieldName].type,
           defaultValue: nestedDefault,
           schema,
-        }),
-      );
-    }, []);
+        });
+      },
+      [variables, {}],
+    );
+
+    return [
+      allSublevelsResult[0],
+      {
+        ...(nameMap as QueryDetailsArgNames),
+        [name]: allSublevelsResult[1],
+      },
+    ];
   }
 };
 
 type TypeNodeInfo = {
-  nameRoot: string;
+  name: string;
   type: TypeNode;
   defaultValue?: ValueNode;
   schema: GraphQLSchema;
 };
 
-const flattenAndConvertNamedType = ({
-  nameRoot,
-  type,
-  defaultValue,
-  schema,
-}: TypeNodeInfo): QueryVariable | QueryVariable[] => {
+const flattenAndConvertNamedType = (
+  [variables, nameMap]: FlattenResult,
+  { name, type, defaultValue, schema }: TypeNodeInfo,
+): FlattenResult => {
   if (type.kind === 'NamedType') {
     const schemaTypeName = type.name.value;
     const schemaType = schema.getType(schemaTypeName);
-    return flattenAndConvertSchemaType({
-      nameRoot,
+    return flattenAndConvertSchemaType([variables, nameMap], {
+      nameRoot: name,
+      name,
       type: schemaType,
       defaultValue,
       schema,
-    });
+    }) as FlattenResult;
   } else if (type.kind === 'NonNullType') {
-    return flattenAndConvertNamedType({
-      nameRoot,
+    return flattenAndConvertNamedType([variables, nameMap], {
+      name,
       type: type.type,
       defaultValue,
       schema,
@@ -122,7 +143,7 @@ const flattenAndConvertNamedType = ({
     // out how to flatten them when we don't actually know how many
     // items will be coming in on the final value. Perhaps we can wait
     // until query execution and utilize the passed in value itself
-    return [];
+    return [variables, nameMap];
   }
 };
 
@@ -134,19 +155,17 @@ const flattenAndConvertNamedType = ({
 const flattenAndConvertVariables = (
   variables: ReadonlyArray<VariableDefinitionNode>,
   schema: GraphQLSchema,
-): QueryVariable[] => {
+): FlattenResult => {
   // quick unwrap of VariableDefinitionNode into a more neutral format
-  return variables.reduce<QueryVariable[]>(
-    (list, varDef) =>
-      list.concat(
-        flattenAndConvertNamedType({
-          nameRoot: varDef.variable.name.value,
-          type: varDef.type,
-          defaultValue: varDef.defaultValue,
-          schema,
-        }),
-      ),
-    [],
+  return variables.reduce<FlattenResult>(
+    (acc, varDef) =>
+      flattenAndConvertNamedType(acc, {
+        name: varDef.variable.name.value,
+        type: varDef.type,
+        defaultValue: varDef.defaultValue,
+        schema,
+      }),
+    [[], {}],
   );
 };
 
