@@ -86,6 +86,7 @@ describe('constructAst', () => {
         expect(ast).toEqual({
           name: 'Test',
           variables: [],
+          variableNameMap: {},
           blocks: [
             {
               kind: 'QueryBlock',
@@ -153,6 +154,9 @@ describe('constructAst', () => {
               defaultValue: 3,
             },
           ],
+          variableNameMap: {
+            scalar: '$scalar',
+          },
           blocks: [
             {
               kind: 'QueryBlock',
@@ -256,6 +260,7 @@ describe('constructAst', () => {
         expect(ast).toEqual({
           name: 'Test',
           variables: [],
+          variableNameMap: {},
           blocks: [
             {
               kind: 'QueryBlock',
@@ -340,6 +345,9 @@ describe('constructAst', () => {
               defaultValue: undefined,
             },
           ],
+          variableNameMap: {
+            innerId: '$innerId',
+          },
           blocks: [
             {
               kind: 'QueryBlock',
@@ -437,6 +445,9 @@ describe('constructAst', () => {
               defaultValue: undefined,
             },
           ],
+          variableNameMap: {
+            innerId: '$innerId',
+          },
           blocks: [
             {
               kind: 'QueryBlock',
@@ -537,6 +548,17 @@ describe('constructAst', () => {
               defaultValue: undefined,
             },
           ],
+          variableNameMap: {
+            input: {
+              first: '$input_first',
+              nested: {
+                match: '$input_nested_match',
+              },
+            },
+            innerInput: {
+              id: '$innerInput_id'
+            }
+          },
           blocks: [
             {
               kind: 'QueryBlock',

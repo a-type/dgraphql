@@ -241,6 +241,7 @@ const constructAst = (
 
   return {
     variables,
+    variableNameMap,
     blocks: createQueryBlocks({
       selectionSet: operation.selectionSet,
       resolveInfo,

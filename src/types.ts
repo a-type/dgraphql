@@ -112,6 +112,7 @@ export type QueryBlockNode = FilterableNode & {
 
 export type Query = {
   variables: QueryVariable[];
+  variableNameMap: NameMap;
   name?: string;
   blocks: QueryBlockNode[];
 };

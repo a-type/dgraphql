@@ -3,7 +3,7 @@ import { DgraphClient } from 'dgraph-js';
 import { ResolverArgs, DGraphFragmentFunc, QueryResolver } from './types';
 import { v4 as uuid } from 'uuid';
 import constructAst from './constructAst';
-import convertToDGraphQuery from './convertToDGraphQuery';
+import runAstQuery from './runAstQuery';
 
 /**
  * Although this class is used as the primary means of interacting with the library,
@@ -35,7 +35,7 @@ export default class DGraphQL {
       info: GraphQLResolveInfo,
     ) => {
       const ast = constructAst(info, this.queryDetailsFuncsById);
-      const queryString = convertToDGraphQuery(ast);
+      return runAstQuery(ast, info.variableValues, this.client);
     };
 
     resolver.id = id;

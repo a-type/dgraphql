@@ -7,6 +7,7 @@ describe('convertToDGraphQuery', () => {
       const ast: Query = {
         name: 'Test',
         variables: [],
+        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
@@ -60,6 +61,7 @@ describe('convertToDGraphQuery', () => {
       const ast: Query = {
         name: 'Test',
         variables: [],
+        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
@@ -115,6 +117,7 @@ describe('convertToDGraphQuery', () => {
       const ast: Query = {
         name: 'Test',
         variables: [],
+        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
@@ -180,6 +183,10 @@ describe('convertToDGraphQuery', () => {
             defaultValue: 0
           }
         ],
+        variableNameMap: {
+          foo: '$foo',
+          bar: '$bar',
+        },
         blocks: [
           {
             kind: 'QueryBlock',
@@ -247,6 +254,10 @@ describe('convertToDGraphQuery', () => {
             defaultValue: 0
           }
         ],
+        variableNameMap: {
+          foo: '$foo',
+          bar: '$bar',
+        },
         blocks: [
           {
             kind: 'QueryBlock',
