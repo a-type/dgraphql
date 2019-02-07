@@ -124,13 +124,13 @@ const resolvers = {
 };
 ```
 
-## Directive-based
+## Directive-based (neo4j-graphql-js style)
 
 ### Pros
 
 - Very terse
 - Information is embedded in schema
-- Very little resolver work necessary
+- No resolver work necessary
 
 ### Cons
 
@@ -172,9 +172,8 @@ const typeDefs = gql`
   }
 `;
 
-const resolvers = {
-  Query: {
-    foo: dgraphql.createQueryResolver(),
-  }
-};
+// ...
+
+// auto-creates resolvers based on annotations
+const dgraphSchema = augmentSchema(schema);
 ```
