@@ -1,5 +1,5 @@
-import { QueryDetailsFunc } from './types';
+import { DGraphFragmentFunc } from './types';
 
-const defaultQueryDetailsFunc: QueryDetailsFunc = _argNames => ({});
+const defaultQueryDetailsFunc: DGraphFragmentFunc = _argNames => ({});
 
 export default defaultQueryDetailsFunc;

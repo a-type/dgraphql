@@ -13,27 +13,37 @@ export type UID = string;
 
 export type Func = string; // todo
 export type Filter = string; // todo
-export type CustomPredicate = string;
 export type Language = string; // todo
 
-export type QueryDetailsArgNames = {
-  [key: string]: string | QueryDetailsArgNames;
+export type NameMap = {
+  [key: string]: string | NameMap;
 };
 
-export type QueryDetails = {
-  func?: Func;
+export type FilterableDetails = {
   filter?: Filter | Filter[];
   first?: number | string;
   offset?: number | string;
   after?: UID;
   orderasc?: string;
   orderdesc?: string;
-  customPredicates?: {
-    [fieldName: string]: CustomPredicate;
-  };
+}
+
+export type EdgePredicateDetails = FilterableDetails & {
+  value?: string;
+}
+
+export type QueryBlockDetails = FilterableDetails & {
+  func?: Func;
 };
 
-export type QueryDetailsFunc = (argNames: QueryDetailsArgNames) => QueryDetails;
+export type ScalarPredicateDetails = {
+  value?: string;
+  language?: Language;
+}
+
+export type DGraphFragmentDetails = QueryBlockDetails | EdgePredicateDetails | ScalarPredicateDetails;
+
+export type DGraphFragmentFunc = (argNames: NameMap) => DGraphFragmentDetails;
 
 export type QueryResolver = {
   (parent: any, args: ResolverArgs, ctx: any, info: GraphQLResolveInfo): any;
@@ -63,15 +73,31 @@ export interface FilterableNode {
 
 export type ScalarPredicateNode = {
   kind: 'ScalarPredicate';
+  /**
+   * Optional: gets the value of this predicate using a string you provide. When
+   * #value is provided, #name becomes the alias for the value.
+   */
+  value?: string;
+  /**
+   * The name of the predicate as it is returned. Use #value to determine the
+   * value of the predicate separately from its name (alias)
+   */
   name: string;
-  alias?: string;
   language?: Language;
 };
 
 export type EdgePredicateNode = FilterableNode & {
   kind: 'EdgePredicate';
+  /**
+   * The name of the predicate as it is returned. Use #value to determine the
+   * value of the predicate separately from its name (alias)
+   */
   name: string;
-  alias?: string;
+  /**
+   * Optional: gets the value of this predicate using a string you provide. When
+   * #value is provided, #name becomes the alias for the value.
+   */
+  value?: string;
   predicates: PredicateNode[];
 };
 

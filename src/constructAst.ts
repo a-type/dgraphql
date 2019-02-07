@@ -5,12 +5,12 @@ import {
   SelectionSetNode,
 } from 'graphql';
 import {
-  QueryDetailsFunc,
+  DGraphFragmentFunc,
   QueryBlockNode,
   PredicateNode,
   Query,
   QueryVariable,
-  QueryDetailsArgNames,
+  NameMap,
 } from './types';
 import flattenAndConvertVariables from './flattenAndConvertVariables';
 import getFieldTypeName from './getTypeNameFromSchema';
@@ -22,9 +22,9 @@ type AddBlockArgs = {
   selectionSet: SelectionSetNode;
   resolveInfo: GraphQLResolveInfo;
   parentType: string;
-  queryDetailsFuncsById: { [id: string]: QueryDetailsFunc };
+  queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc };
   variables: QueryVariable[];
-  variableNameMap: QueryDetailsArgNames;
+  variableNameMap: NameMap;
 };
 
 const createQueryBlocks = ({
@@ -187,8 +187,8 @@ const getFieldInfo = ({
   selection: SelectionNode;
   schema: GraphQLSchema;
   parentType: string;
-  queryDetailsFuncsById: { [id: string]: QueryDetailsFunc };
-  variableNameMap: QueryDetailsArgNames;
+  queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc };
+  variableNameMap: NameMap;
 }) => {
   if (selection.kind === 'Field') {
     const fieldName = selection.name.value;
@@ -231,7 +231,7 @@ const getFieldInfo = ({
 
 const constructAst = (
   resolveInfo: GraphQLResolveInfo,
-  queryDetailsFuncsById: { [id: string]: QueryDetailsFunc },
+  queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc },
 ): Query => {
   const { operation, parentType } = resolveInfo;
   const [variables, variableNameMap] = flattenAndConvertVariables(

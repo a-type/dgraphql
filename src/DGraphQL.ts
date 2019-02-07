@@ -1,8 +1,9 @@
 import { GraphQLResolveInfo } from 'graphql';
 import { DgraphClient } from 'dgraph-js';
-import { ResolverArgs, QueryDetailsFunc, QueryResolver } from './types';
+import { ResolverArgs, DGraphFragmentFunc, QueryResolver } from './types';
 import { v4 as uuid } from 'uuid';
 import constructAst from './constructAst';
+import convertToDGraphQuery from './convertToDGraphQuery';
 
 /**
  * Although this class is used as the primary means of interacting with the library,
@@ -13,13 +14,13 @@ import constructAst from './constructAst';
  */
 export default class DGraphQL {
   private client: DgraphClient;
-  private queryDetailsFuncsById: { [id: string]: QueryDetailsFunc } = {};
+  private queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc } = {};
 
   constructor(client: DgraphClient) {
     this.client = client;
   }
 
-  createQueryResolver = (queryDetailsFunc: QueryDetailsFunc): QueryResolver => {
+  createQueryResolver = (queryDetailsFunc: DGraphFragmentFunc): QueryResolver => {
     const resolverId = uuid();
     this.queryDetailsFuncsById[resolverId] = queryDetailsFunc;
     const resolver = this.constructResolver(resolverId);
@@ -29,11 +30,12 @@ export default class DGraphQL {
   private constructResolver = (id: string): QueryResolver => {
     const resolver: QueryResolver = (
       _parent: any,
-      args: ResolverArgs,
-      context: any,
+      _args: ResolverArgs,
+      _context: any,
       info: GraphQLResolveInfo,
     ) => {
       const ast = constructAst(info, this.queryDetailsFuncsById);
+      const queryString = convertToDGraphQuery(ast);
     };
 
     resolver.id = id;

@@ -18,7 +18,7 @@ import {
 import {
   QueryVariable,
   QueryVariableType,
-  QueryDetailsArgNames,
+  NameMap,
 } from './types';
 import { getTypeName } from './getTypeNameFromSchema';
 import { getArgValueName } from './getArgValueNames';
@@ -46,8 +46,8 @@ type SchemaTypeInfo = {
   schema: GraphQLSchema;
 };
 
-type FlattenResult = [QueryVariable[], QueryDetailsArgNames];
-type NestedFlattenResult = [QueryVariable[], QueryDetailsArgNames | string];
+type FlattenResult = [QueryVariable[], NameMap];
+type NestedFlattenResult = [QueryVariable[], NameMap | string];
 
 const combineNames = (baseName: string, key: string) => `${baseName}_${key}`;
 
@@ -103,7 +103,7 @@ const flattenAndConvertSchemaType = (
     return [
       allSublevelsResult[0],
       {
-        ...(nameMap as QueryDetailsArgNames),
+        ...(nameMap as NameMap),
         [name]: allSublevelsResult[1],
       },
     ];

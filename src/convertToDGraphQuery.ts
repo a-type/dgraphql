@@ -5,6 +5,7 @@ import {
   ScalarPredicateNode,
   EdgePredicateNode,
   FilterableNode,
+  QueryVariable,
 } from './types';
 
 /**
@@ -46,83 +47,89 @@ const isScalarPredicate = (
 ): predicate is ScalarPredicateNode => predicate.kind === 'ScalarPredicate';
 
 const createPaginationParams = (node: FilterableNode) => [
-  node.first ? `first: ${node.first}` : null,
-  node.offset ? `offset: ${node.offset}` : null,
-  node.after ? `after: ${node.after}` : null,
-  node.orderasc ? `orderasc: ${node.orderasc}` : null,
-  node.orderdesc ? `orderdesc: ${node.orderdesc}` : null,
+  node.first !== undefined ? `first: ${node.first}` : null,
+  node.offset !== undefined ? `offset: ${node.offset}` : null,
+  node.after !== undefined ? `after: ${node.after}` : null,
+  node.orderasc !== undefined ? `orderasc: ${node.orderasc}` : null,
+  node.orderdesc !== undefined ? `orderdesc: ${node.orderdesc}` : null,
 ];
 
-const spaces = (count: number) => new Array(count).fill('  ').join('');
+const indent = (line: string) => `  ${line}`;
 
-const lines = (lines: string[], level: number = 0) =>
+const lines = (lines: string[]) =>
   lines
     .filter(Boolean)
-    .map(line => `${spaces(level)}${line}`)
     .join(`\n`);
+
+const level = (items, lineCreator) => items.reduce((all, item) => all.concat(lineCreator(item).filter(Boolean)), []).map(indent);
 
 const handleEdgePredicate = (
   predicate: EdgePredicateNode,
-  level: number,
-): string => {
-  const alias = predicate.alias ? `${predicate.alias}: ` : '';
+): string[] => {
+  const value = predicate.value ? `: ${predicate.value}` : '';
   const filter = predicate.filter ? `@filter(${predicate.filter})` : '';
   const params = createPaginationParams(predicate).filter(Boolean);
-  return lines(
-    [
-      `${alias}${predicate.name}`,
+  return  [
+      `${predicate.name}${value}`,
       params.length && `  (${params.join(', ')})`,
       filter && `  ${filter}`,
       `{`,
-      ...predicate.predicates.map(p => handlePredicate(p, level + 1)),
+      ...level(predicate.predicates, handlePredicate),
       `}`,
-    ],
-    level,
-  );
+    ];
 };
 
 const handleScalarPredicate = (
   predicate: ScalarPredicateNode,
-  level: number,
-): string => {
+): string[] => {
   const lang = predicate.language ? `@${predicate.language}` : '';
-  const alias = predicate.alias ? `${predicate.alias}: ` : '';
-  return `${spaces(level)}${alias}${predicate.name}${lang}`;
+  const value = predicate.value ? `: ${predicate.value}` : '';
+  return [`${predicate.name}${value}${lang}`];
 };
 
-const handlePredicate = (predicate: PredicateNode, level: number): string => {
+const handlePredicate = (predicate: PredicateNode): string[] => {
   if (isScalarPredicate(predicate)) {
-    return handleScalarPredicate(predicate, level);
+    return handleScalarPredicate(predicate);
   } else {
-    return handleEdgePredicate(predicate, level);
+    return handleEdgePredicate(predicate);
   }
 };
 
-const handleQueryBlock = (block: QueryBlockNode, level: number): string => {
+const handleQueryBlock = (block: QueryBlockNode): string[] => {
   const params = [
     block.func ? `func: ${block.func}` : null,
     ...createPaginationParams(block),
   ].filter(Boolean);
 
-  const filter = block.filter ? ` @filter(${block.filter})` : '';
-  return lines(
-    [
+  const filter = block.filter ? `@filter(${block.filter})` : '';
+  return [
       `${block.name}`,
       params.length && `  (${params.join(', ')})`,
       filter && `  ${filter}`,
       `{`,
-      ...block.predicates.map(p => handlePredicate(p, level + 1)),
+      ...level(block.predicates, handlePredicate),
       `}`,
-    ],
-    level,
-  );
+    ];
 };
+
+const handleVariables = (variables: QueryVariable[]) => {
+  const formatter = v => [`$${v.name}: ${v.type}${v.defaultValue !== undefined ? ` = ${v.defaultValue}` : ''}`];
+  if (variables.length) {
+    return [
+      `(`,
+      ...level(variables, formatter).map((s, i) => i !== variables.length - 1 ? `${s},` : s),
+      `)`
+    ];
+  }
+  return [];
+}
 
 const convertToDGraphQuery = (ast: Query): string => {
   return lines([
     `query ${ast.name}`,
+    ...handleVariables(ast.variables),
     `{`,
-    ...ast.blocks.map(b => handleQueryBlock(b, 1)),
+    ...level(ast.blocks, handleQueryBlock),
     `}`,
   ]);
 };

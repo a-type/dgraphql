@@ -30,6 +30,7 @@ const typeDefs = gql`
     id: ID!
     enum: TestEnum
     name: String
+    count: Int
     inner(id: ID, input: TestInnerInput): Inner
   }
 
@@ -199,6 +200,7 @@ describe('constructAst', () => {
 
       Outer: {
         enum: () => null,
+        count: () => null,
         inner: () => null,
       },
     };
@@ -207,6 +209,7 @@ describe('constructAst', () => {
     resolvers.Query.outer['id'] = 'Query.outer';
     resolvers.Outer.enum['id'] = 'Outer.enum';
     resolvers.Outer.inner['id'] = 'Outer.inner';
+    resolvers.Outer.count['id'] = 'Outer.count';
 
     const schema = makeExecutableSchema({
       typeDefs,
@@ -356,6 +359,111 @@ describe('constructAst', () => {
                 {
                   kind: 'EdgePredicate',
                   name: 'inner',
+                  filter: `eq("id", $innerId)`,
+                  predicates: [
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'id',
+                    },
+                    {
+                      kind: 'ScalarPredicate',
+                      name: 'foo',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      });
+    });
+
+    describe('customized predicates', () => {
+      test('builds a valid ast', async () => {
+        const document = gql`
+          query Test($innerId: ID) {
+            outer {
+              id
+              enum
+              count
+              inner(id: $innerId) {
+                id
+                foo
+              }
+            }
+          }
+        `;
+
+        const outerQueryFunc = argNames => ({
+          func: `eq("id", "foo")`,
+          first: 10,
+          offset: 0,
+        });
+
+        const innerQueryFunc = argNames => ({
+          filter: `eq("id", ${argNames.id})`,
+          value: 'relationship',
+        });
+
+        const enumQueryFunc = argNames => ({
+          value: 'baz',
+          language: 'en',
+        });
+
+        const countQueryFunc = () => ({
+          value: 'count(name)',
+        });
+
+        await execute({
+          schema,
+          document,
+        });
+
+        expect(capturedParams).toHaveLength(4);
+
+        const ast = constructAst(capturedParams[3], {
+          'Query.outer': outerQueryFunc,
+          'Outer.inner': innerQueryFunc,
+          'Outer.enum': enumQueryFunc,
+          'Outer.count': countQueryFunc
+        });
+
+        expect(ast).toEqual({
+          name: 'Test',
+          variables: [
+            {
+              name: 'innerId',
+              type: 'string',
+              defaultValue: undefined,
+            },
+          ],
+          blocks: [
+            {
+              kind: 'QueryBlock',
+              name: 'outer',
+              func: `eq("id", "foo")`,
+              first: 10,
+              offset: 0,
+              predicates: [
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'id',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'enum',
+                  value: 'baz',
+                  language: 'en',
+                },
+                {
+                  kind: 'ScalarPredicate',
+                  name: 'count',
+                  value: 'count(name)',
+                },
+                {
+                  kind: 'EdgePredicate',
+                  name: 'inner',
+                  value: 'relationship',
                   filter: `eq("id", $innerId)`,
                   predicates: [
                     {
