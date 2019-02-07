@@ -1,5 +1,5 @@
 export const debug = (...args) => {
-  if (process.env.DEBUG.includes('dgraphql') || ['*', 'true'].includes(process.env.DEBUG)) {
+  if (process.env.DEBUG && (process.env.DEBUG.includes('dgraphql') || ['*', 'true'].includes(process.env.DEBUG))) {
     console.debug(...args);
   }
 }
