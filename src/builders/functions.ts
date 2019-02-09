@@ -49,7 +49,7 @@ const createGeoPolygonFilter = (filterName: FilterName) => (
   ...moreLongLats: GeoLongLat[]
 ) => {
   const longLatList = [].concat(longLats).concat(moreLongLats || []);
-  return `${FilterName.Within}(${predicate}, ${JSON.stringify(longLatList)})`;
+  return `${filterName}(${predicate}, ${JSON.stringify(longLatList)})`;
 };
 
 export default {
