@@ -1,4 +1,15 @@
 import { ApolloServer, gql } from 'apollo-server';
+import { DGraphQL } from '../../src';
+import { DgraphClient, DgraphClientStub } from 'dgraph-js';
+import { credentials } from 'grpc';
+
+const clientStub = new DgraphClientStub(
+  'localhost:9080',
+  credentials.createInsecure(),
+);
+
+const client = new DgraphClient(clientStub);
+client.setDebugMode(true); // you don't need this in production
 
 const typeDefs = gql`
   type Person {
@@ -32,7 +43,15 @@ const typeDefs = gql`
   }
 `;
 
-const resolvers = {};
+const dgraphql = new DGraphQL(client);
+
+const resolvers = {
+  Query: {
+    movies: dgraphql.createQueryResolver(argNames => {
+      const orderedFilters =
+    }),
+  }
+};
 
 const server = new ApolloServer({ typeDefs, resolvers });
 

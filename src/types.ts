@@ -1,5 +1,7 @@
 import { GraphQLResolveInfo } from 'graphql';
 
+export type DGraphScalar = string | number | boolean;
+
 export type GenericArgs = {
   [argName: string]: any;
 };
@@ -20,17 +22,17 @@ export type NameMap = {
 };
 
 export type FilterableDetails = {
-  filter?: Filter | Filter[];
+  filter?: Filter;
   first?: number | string;
   offset?: number | string;
   after?: UID;
   orderasc?: string;
   orderdesc?: string;
-}
+};
 
 export type EdgePredicateDetails = FilterableDetails & {
   value?: string;
-}
+};
 
 export type QueryBlockDetails = FilterableDetails & {
   func?: Func;
@@ -39,9 +41,12 @@ export type QueryBlockDetails = FilterableDetails & {
 export type ScalarPredicateDetails = {
   value?: string;
   language?: Language;
-}
+};
 
-export type DGraphFragmentDetails = QueryBlockDetails | EdgePredicateDetails | ScalarPredicateDetails;
+export type DGraphFragmentDetails =
+  | QueryBlockDetails
+  | EdgePredicateDetails
+  | ScalarPredicateDetails;
 
 export type DGraphFragmentFunc = (argNames: NameMap) => DGraphFragmentDetails;
 
@@ -63,7 +68,7 @@ export type QueryVariable = {
 };
 
 export interface FilterableNode {
-  filter?: Filter[];
+  filter?: Filter;
   first?: number;
   offset?: number;
   after?: UID;
