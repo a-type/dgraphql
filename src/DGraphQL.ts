@@ -4,6 +4,7 @@ import { ResolverArgs, DGraphFragmentFunc, QueryResolver } from './types';
 import { v4 as uuid } from 'uuid';
 import constructAst from './constructAst';
 import runAstQuery from './runAstQuery';
+import builders from './builders';
 
 /**
  * Although this class is used as the primary means of interacting with the library,
@@ -15,6 +16,8 @@ import runAstQuery from './runAstQuery';
 export default class DGraphQL {
   private client: DgraphClient;
   private queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc } = {};
+
+  filters = builders;
 
   constructor(client: DgraphClient) {
     this.client = client;

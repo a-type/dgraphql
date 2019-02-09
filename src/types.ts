@@ -18,7 +18,7 @@ export type Filter = string; // todo
 export type Language = string; // todo
 
 export type NameMap = {
-  [key: string]: string | NameMap;
+  [key: string]: any;
 };
 
 export type FilterableDetails = {

@@ -48,9 +48,20 @@ const dgraphql = new DGraphQL(client);
 const resolvers = {
   Query: {
     movies: dgraphql.createQueryResolver(argNames => {
-      const orderedFilters =
+      const orderedFilters = [
+        argNames.input.titleMatch && dgraphql.filters.anyOfTerms('title', argNames.input.titleMatch),
+        argNames.input.revenueGt && dgraphql.filters.greaterThan('revenue', argNames.input.revenueGt),
+        argNames.input.revenueLt && dgraphql.filters.lessThan('revenue', argNames.input.revenueLt),
+      ].filter(Boolean); // filter out falsy values
+      const [func, ...filters] = orderedFilters;
+      return {
+        func,
+        filter: dgraphql.filters.and(...filters),
+        first: argNames.first,
+        offset: argNames.offset,
+      };
     }),
-  }
+  },
 };
 
 const server = new ApolloServer({ typeDefs, resolvers });
