@@ -1,4 +1,4 @@
-import { DGraphScalar } from '../types';
+import { DGraphScalar, QueryVariable } from '../types';
 
 export enum FilterName {
   AllOfTerms = 'allofterms',
@@ -23,6 +23,13 @@ export enum FilterName {
 
 export type GeoLongLat = [number, number];
 
+export type FunctionBuilderContext = {
+  // we will be mutating this
+  variables: QueryVariable[];
+  // namespace for new created variables
+  baseName: string;
+}
+
 const joinTerms = (terms: string | string[], moreTerms: string[]): string => {
   if (terms instanceof Array || moreTerms) {
     const termsArray: string[] = [].concat(terms).concat(moreTerms || []);
@@ -31,19 +38,19 @@ const joinTerms = (terms: string | string[], moreTerms: string[]): string => {
   return terms;
 };
 
-const createTextFilter = (filterName: FilterName) => (
+const createTextFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
   predicate: string,
   terms: string | string[],
   ...moreTerms: string[]
 ) =>
   `${filterName}(${predicate}, ${JSON.stringify(joinTerms(terms, moreTerms))})`;
 
-const createInequalityFilter = (filterName: FilterName) => (
+const createInequalityFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
   predicateOrValue: string,
   testValue: DGraphScalar,
 ) => `${filterName}(${predicateOrValue}, ${JSON.stringify(testValue)})`;
 
-const createGeoPolygonFilter = (filterName: FilterName) => (
+const createGeoPolygonFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
   predicate: string,
   longLats: GeoLongLat | GeoLongLat[],
   ...moreLongLats: GeoLongLat[]
@@ -52,7 +59,7 @@ const createGeoPolygonFilter = (filterName: FilterName) => (
   return `${filterName}(${predicate}, ${JSON.stringify(longLatList)})`;
 };
 
-export default {
+export default (ctx: FunctionBuilderContext) => ({
   allOfTerms: createTextFilter(FilterName.AllOfTerms),
   anyOfTerms: createTextFilter(FilterName.AnyOfTerms),
 
@@ -107,4 +114,4 @@ export default {
   within: createGeoPolygonFilter(FilterName.Within),
   contains: createGeoPolygonFilter(FilterName.Contains),
   intersects: createGeoPolygonFilter(FilterName.Intersects),
-};
+});
