@@ -22,32 +22,28 @@ const createPaginationParams = (node: FilterableNode) => [
 
 const indent = (line: string) => `  ${line}`;
 
-const lines = (lines: string[]) =>
-  lines
-    .filter(Boolean)
-    .join(`\n`);
+const lines = (lines: string[]) => lines.filter(Boolean).join('\n');
 
-const level = (items, lineCreator) => items.reduce((all, item) => all.concat(lineCreator(item).filter(Boolean)), []).map(indent);
+const level = (items, lineCreator) =>
+  items
+    .reduce((all, item) => all.concat(lineCreator(item).filter(Boolean)), [])
+    .map(indent);
 
-const handleEdgePredicate = (
-  predicate: EdgePredicateNode,
-): string[] => {
+const handleEdgePredicate = (predicate: EdgePredicateNode): string[] => {
   const value = predicate.value ? `: ${predicate.value}` : '';
   const filter = predicate.filter ? `@filter(${predicate.filter})` : '';
   const params = createPaginationParams(predicate).filter(Boolean);
-  return  [
-      `${predicate.name}${value}`,
-      params.length && `  (${params.join(', ')})`,
-      filter && `  ${filter}`,
-      `{`,
-      ...level(predicate.predicates, handlePredicate),
-      `}`,
-    ];
+  return [
+    `${predicate.name}${value}`,
+    params.length && `  (${params.join(', ')})`,
+    filter && `  ${filter}`,
+    `{`,
+    ...level(predicate.predicates, handlePredicate),
+    `}`,
+  ];
 };
 
-const handleScalarPredicate = (
-  predicate: ScalarPredicateNode,
-): string[] => {
+const handleScalarPredicate = (predicate: ScalarPredicateNode): string[] => {
   const lang = predicate.language ? `@${predicate.language}` : '';
   const value = predicate.value ? `: ${predicate.value}` : '';
   return [`${predicate.name}${value}${lang}`];
@@ -69,30 +65,38 @@ const handleQueryBlock = (block: QueryBlockNode): string[] => {
 
   const filter = block.filter ? `@filter(${block.filter})` : '';
   return [
-      `${block.name}`,
-      params.length && `  (${params.join(', ')})`,
-      filter && `  ${filter}`,
-      `{`,
-      ...level(block.predicates, handlePredicate),
-      `}`,
-    ];
+    `${block.name}`,
+    `  (${params.join(', ')})`,
+    filter && `  ${filter}`,
+    `{`,
+    ...level(block.predicates, handlePredicate),
+    `}`,
+  ];
 };
 
 const handleVariables = (variables: QueryVariable[]) => {
-  const formatter = v => [`$${v.name}: ${v.type}${v.defaultValue !== undefined ? ` = ${v.defaultValue}` : ''}`];
+  const formatter = v => [
+    `${v.name}: ${v.type}${
+      v.defaultValue !== undefined ? ` = ${v.defaultValue}` : ''
+    }`,
+  ];
   if (variables.length) {
     return [
       `(`,
-      ...level(variables, formatter).map((s, i) => i !== variables.length - 1 ? `${s},` : s),
-      `)`
+      ...level(variables, formatter).map((s, i) =>
+        i !== variables.length - 1 ? `${s},` : s,
+      ),
+      `)`,
     ];
   }
   return [];
-}
+};
 
 const convertToDGraphQuery = (ast: Query): string => {
+  const name = ast.name || ast.variables.length ? 'unnamed' : null;
+
   return lines([
-    `query ${ast.name}`,
+    name && `query ${name}`,
     ...handleVariables(ast.variables),
     `{`,
     ...level(ast.blocks, handleQueryBlock),

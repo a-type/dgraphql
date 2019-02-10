@@ -31,27 +31,44 @@ const typeDefs = gql`
     director: Person!
   }
 
+  input ArbitraryNestedInput {
+    a: String
+  }
+
   input MovieFilterInput {
     titleMatch: String
     revenueGt: Int
     revenueLt: Int
+    arbitrary: ArbitraryNestedInput
   }
 
   type Query {
-    movies(input: MovieFilterInput, first: Int, offset: Int): [Movie!]!
+    movies(
+      input: MovieFilterInput = {
+        titleMatch: ""
+        revenueGt: 0
+        arbitrary: { a: "foo" }
+      }
+      first: Int = 10
+      offset: Int = 0
+    ): [Movie!]!
     person(id: ID!): Person
   }
 `;
 
-const dgraphql = new DGraphQL(client);
+const dgraphql = new DGraphQL(client, { debug: true });
 
 const resolvers = {
   Query: {
     movies: dgraphql.createQueryResolver(argNames => {
+      console.log(argNames);
       const orderedFilters = [
-        argNames.input.titleMatch && dgraphql.filters.anyOfTerms('title', argNames.input.titleMatch),
-        argNames.input.revenueGt && dgraphql.filters.greaterThan('revenue', argNames.input.revenueGt),
-        argNames.input.revenueLt && dgraphql.filters.lessThan('revenue', argNames.input.revenueLt),
+        argNames.input.titleMatch &&
+          dgraphql.filters.anyOfTerms('title', argNames.input.titleMatch),
+        argNames.input.revenueGt &&
+          dgraphql.filters.greaterThan('revenue', argNames.input.revenueGt),
+        argNames.input.revenueLt &&
+          dgraphql.filters.lessThan('revenue', argNames.input.revenueLt),
       ].filter(Boolean); // filter out falsy values
       const [func, ...filters] = orderedFilters;
       return {
@@ -64,8 +81,20 @@ const resolvers = {
   },
 };
 
-const server = new ApolloServer({ typeDefs, resolvers });
+dgraphql.readResolvers(resolvers);
+
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  formatError: err => {
+    console.error(err.originalError);
+    return err;
+  },
+});
 
 server.listen().then(({ url }) => {
   console.log(`🚀  Server ready at ${url}`);
 });
+
+// for tests to be able to control the server
+export default server;

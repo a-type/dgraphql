@@ -1,10 +1,21 @@
-import { GraphQLResolveInfo } from 'graphql';
+import {
+  GraphQLResolveInfo,
+  SchemaDefinitionNode,
+  GraphQLSchema,
+} from 'graphql';
 import { DgraphClient } from 'dgraph-js';
 import { ResolverArgs, DGraphFragmentFunc, QueryResolver } from './types';
 import { v4 as uuid } from 'uuid';
 import constructAst from './constructAst';
 import runAstQuery from './runAstQuery';
 import builders from './builders';
+import getFieldsForType from './getFieldsForType';
+
+const DGRAPHQL_RESOLVER_ID_KEY = 'dgraphQLResolverId';
+
+export type DGraphQLOptions = {
+  debug?: boolean;
+};
 
 /**
  * Although this class is used as the primary means of interacting with the library,
@@ -16,32 +27,92 @@ import builders from './builders';
 export default class DGraphQL {
   private client: DgraphClient;
   private queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc } = {};
+  private queryDetailsFuncsByPath: { [path: string]: DGraphFragmentFunc } = {};
+  private options: DGraphQLOptions;
 
   filters = builders;
 
-  constructor(client: DgraphClient) {
+  constructor(
+    client: DgraphClient,
+    options: DGraphQLOptions = { debug: false },
+  ) {
     this.client = client;
+    this.options = options;
   }
 
-  createQueryResolver = (queryDetailsFunc: DGraphFragmentFunc): QueryResolver => {
+  readResolvers = (resolverTree: { [field: string]: any }) => {
+    const idMap = Object.keys(resolverTree).reduce(
+      (fieldPathToIdMap, typeName) => {
+        const resolver = resolverTree[typeName];
+        if (typeof resolver === 'object') {
+          return Object.keys(resolver).reduce((pathToIdMap, fieldName) => {
+            const field = resolver[fieldName];
+            // check to see if its one of our id'd resolvers
+            if (
+              typeof field === 'function' &&
+              field[DGRAPHQL_RESOLVER_ID_KEY]
+            ) {
+              if (this.options.debug) {
+                console.debug(
+                  `DGraphQL read resolver: ${field[DGRAPHQL_RESOLVER_ID_KEY]}`,
+                );
+              }
+              pathToIdMap[`${typeName}.${fieldName}`] =
+                field[DGRAPHQL_RESOLVER_ID_KEY];
+            }
+            return pathToIdMap;
+          }, fieldPathToIdMap);
+        } else if (resolver && resolver[DGRAPHQL_RESOLVER_ID_KEY]) {
+          // TODO: actually use type level resolvers... if such a thing is real?
+          if (this.options.debug) {
+            console.debug(
+              `DGraphQL read resolver: ${resolver[DGRAPHQL_RESOLVER_ID_KEY]}`,
+            );
+          }
+          fieldPathToIdMap[typeName] = resolver[DGRAPHQL_RESOLVER_ID_KEY];
+        }
+      },
+      {},
+    );
+
+    this.queryDetailsFuncsByPath = Object.keys(idMap).reduce((map, path) => {
+      map[path] = this.queryDetailsFuncsById[idMap[path]];
+      return map;
+    }, {});
+  };
+
+  createQueryResolver = (
+    queryDetailsFunc: DGraphFragmentFunc,
+  ): QueryResolver => {
     const resolverId = uuid();
     this.queryDetailsFuncsById[resolverId] = queryDetailsFunc;
     const resolver = this.constructResolver(resolverId);
+    if (this.options.debug) {
+      console.debug(`DGraphQL: registered resolver with id ${resolverId}`);
+    }
     return resolver;
   };
 
   private constructResolver = (id: string): QueryResolver => {
     const resolver: QueryResolver = (
       _parent: any,
+      // we will use the arg values, but we will reference them from the
+      // info arg instead just due to the way we will end up having
+      // to pre-traverse the entire query in a consistent way.
       _args: ResolverArgs,
       _context: any,
       info: GraphQLResolveInfo,
     ) => {
-      const ast = constructAst(info, this.queryDetailsFuncsById);
-      return runAstQuery(ast, info.variableValues, this.client);
+      const ast = constructAst(
+        info,
+        info.variableValues,
+        this.queryDetailsFuncsByPath,
+        this.options.debug,
+      );
+      return runAstQuery(ast, this.client, this.options.debug);
     };
 
-    resolver.id = id;
+    resolver[DGRAPHQL_RESOLVER_ID_KEY] = id;
 
     return resolver;
   };

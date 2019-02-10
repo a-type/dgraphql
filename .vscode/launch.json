@@ -23,6 +23,12 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "outFiles": ["${workspaceRoot}/dist/**/*"]
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach",
+      "processId": "${command:PickProcess}"
     }
   ]
 }

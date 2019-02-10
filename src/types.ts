@@ -52,7 +52,6 @@ export type DGraphFragmentFunc = (argNames: NameMap) => DGraphFragmentDetails;
 
 export type QueryResolver = {
   (parent: any, args: ResolverArgs, ctx: any, info: GraphQLResolveInfo): any;
-  id: string;
 };
 
 /**
@@ -63,17 +62,22 @@ export type QueryVariableType = 'int' | 'float' | 'bool' | 'string';
 
 export type QueryVariable = {
   name: string;
+  value: DGraphScalar;
   type: QueryVariableType;
-  defaultValue?: number | boolean | string;
+  defaultValue?: DGraphScalar;
 };
 
 export interface FilterableNode {
   filter?: Filter;
-  first?: number;
-  offset?: number;
+  first?: number | string;
+  offset?: number | string;
   after?: UID;
   orderasc?: string;
   orderdesc?: string;
+}
+
+export interface ParentNode {
+  predicates: PredicateNode[];
 }
 
 export type ScalarPredicateNode = {
@@ -91,29 +95,29 @@ export type ScalarPredicateNode = {
   language?: Language;
 };
 
-export type EdgePredicateNode = FilterableNode & {
-  kind: 'EdgePredicate';
-  /**
-   * The name of the predicate as it is returned. Use #value to determine the
-   * value of the predicate separately from its name (alias)
-   */
-  name: string;
-  /**
-   * Optional: gets the value of this predicate using a string you provide. When
-   * #value is provided, #name becomes the alias for the value.
-   */
-  value?: string;
-  predicates: PredicateNode[];
-};
+export type EdgePredicateNode = FilterableNode &
+  ParentNode & {
+    kind: 'EdgePredicate';
+    /**
+     * The name of the predicate as it is returned. Use #value to determine the
+     * value of the predicate separately from its name (alias)
+     */
+    name: string;
+    /**
+     * Optional: gets the value of this predicate using a string you provide. When
+     * #value is provided, #name becomes the alias for the value.
+     */
+    value?: string;
+  };
 
 export type PredicateNode = ScalarPredicateNode | EdgePredicateNode;
 
-export type QueryBlockNode = FilterableNode & {
-  kind: 'QueryBlock';
-  name: string;
-  func?: Func;
-  predicates: PredicateNode[];
-};
+export type QueryBlockNode = FilterableNode &
+  ParentNode & {
+    kind: 'QueryBlock';
+    name: string;
+    func?: Func;
+  };
 
 export type Query = {
   variables: QueryVariable[];

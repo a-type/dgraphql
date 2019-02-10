@@ -1,18 +1,23 @@
-import { DgraphClientStub, DgraphClient, Mutation } from 'dgraph-js';
+import { DgraphClientStub, DgraphClient, Mutation, Operation } from 'dgraph-js';
 import { credentials } from 'grpc';
 
-const clientStub = new DgraphClientStub(
-  'localhost:9080',
-  credentials.createInsecure(),
-);
+export default async (dgraphHost = 'localhost:9080') => {
+  const clientStub = new DgraphClientStub(
+    dgraphHost,
+    credentials.createInsecure(),
+  );
 
-const client = new DgraphClient(clientStub);
-client.setDebugMode(true);
+  const client = new DgraphClient(clientStub);
+  client.setDebugMode(true);
 
-(async () => {
   const txn = client.newTxn();
 
   try {
+    // drop all existing
+    const op = new Operation();
+    op.setDropAll(true);
+    await client.alter(op);
+
     const data = [
       '_:luke <name> "Luke Skywalker" .',
       '_:leia <name> "Princess Leia" .',
@@ -62,4 +67,4 @@ client.setDebugMode(true);
     await txn.discard();
     process.exit(1);
   }
-})();
+};

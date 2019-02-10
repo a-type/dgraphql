@@ -5,7 +5,6 @@ describe('convertToDGraphQuery', () => {
   describe('simple ast', () => {
     test('generates a valid query', () => {
       const ast: Query = {
-        name: 'Test',
         variables: [],
         variableNameMap: {},
         blocks: [
@@ -87,7 +86,7 @@ describe('convertToDGraphQuery', () => {
                   {
                     kind: 'ScalarPredicate',
                     name: 'foo',
-                    language: 'jp:en:.'
+                    language: 'jp:en:.',
                   },
                 ],
               },
@@ -180,8 +179,8 @@ describe('convertToDGraphQuery', () => {
           {
             name: 'bar',
             type: 'int',
-            defaultValue: 0
-          }
+            defaultValue: 0,
+          },
         ],
         variableNameMap: {
           foo: '$foo',
@@ -251,8 +250,8 @@ describe('convertToDGraphQuery', () => {
           {
             name: 'bar',
             type: 'int',
-            defaultValue: 0
-          }
+            defaultValue: 0,
+          },
         ],
         variableNameMap: {
           foo: '$foo',
