@@ -28,7 +28,7 @@ export type FunctionBuilderContext = {
   variables: QueryVariable[];
   // namespace for new created variables
   baseName: string;
-}
+};
 
 const joinTerms = (terms: string | string[], moreTerms: string[]): string => {
   if (terms instanceof Array || moreTerms) {
@@ -38,19 +38,19 @@ const joinTerms = (terms: string | string[], moreTerms: string[]): string => {
   return terms;
 };
 
-const createTextFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
+const createTextFilter = (filterName: FilterName) => (
   predicate: string,
   terms: string | string[],
   ...moreTerms: string[]
 ) =>
   `${filterName}(${predicate}, ${JSON.stringify(joinTerms(terms, moreTerms))})`;
 
-const createInequalityFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
+const createInequalityFilter = (filterName: FilterName) => (
   predicateOrValue: string,
   testValue: DGraphScalar,
 ) => `${filterName}(${predicateOrValue}, ${JSON.stringify(testValue)})`;
 
-const createGeoPolygonFilter = (ctx: FunctionBuilderContext) => (filterName: FilterName) => (
+const createGeoPolygonFilter = (filterName: FilterName) => (
   predicate: string,
   longLats: GeoLongLat | GeoLongLat[],
   ...moreLongLats: GeoLongLat[]
@@ -59,7 +59,7 @@ const createGeoPolygonFilter = (ctx: FunctionBuilderContext) => (filterName: Fil
   return `${filterName}(${predicate}, ${JSON.stringify(longLatList)})`;
 };
 
-export default (ctx: FunctionBuilderContext) => ({
+export default {
   allOfTerms: createTextFilter(FilterName.AllOfTerms),
   anyOfTerms: createTextFilter(FilterName.AnyOfTerms),
 
@@ -114,4 +114,4 @@ export default (ctx: FunctionBuilderContext) => ({
   within: createGeoPolygonFilter(FilterName.Within),
   contains: createGeoPolygonFilter(FilterName.Contains),
   intersects: createGeoPolygonFilter(FilterName.Intersects),
-});
+};
