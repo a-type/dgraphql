@@ -81,7 +81,7 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {});
+        const ast = constructAst(capturedParams[3], {}, []);
 
         expect(ast).toEqual({
           name: 'Test',
@@ -143,7 +143,7 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {});
+        const ast = constructAst(capturedParams[3], {}, []);
 
         expect(ast).toEqual({
           name: 'Test',
@@ -209,12 +209,6 @@ describe('constructAst', () => {
       },
     };
 
-    // assign an id to the resolver for consistency with lib behavior
-    resolvers.Query.outer['id'] = 'Query.outer';
-    resolvers.Outer.enum['id'] = 'Outer.enum';
-    resolvers.Outer.inner['id'] = 'Outer.inner';
-    resolvers.Outer.count['id'] = 'Outer.count';
-
     const schema = makeExecutableSchema({
       typeDefs,
       resolvers,
@@ -236,12 +230,14 @@ describe('constructAst', () => {
         `;
 
         const outerQueryFunc = argNames => ({
+          typeName: 'Outer',
           func: `eq("id", "foo")`,
           first: 10,
           offset: 0,
         });
 
         const innerQueryFunc = argNames => ({
+          typeName: 'Inner',
           filter: `eq("id", ${argNames.id})`,
         });
 
@@ -252,10 +248,14 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {
-          'Query.outer': outerQueryFunc,
-          'Outer.inner': innerQueryFunc,
-        });
+        const ast = constructAst(
+          capturedParams[3],
+          {
+            'Query.outer': outerQueryFunc,
+            'Outer.inner': innerQueryFunc,
+          },
+          [],
+        );
 
         expect(ast).toEqual({
           name: 'Test',
@@ -315,12 +315,14 @@ describe('constructAst', () => {
         `;
 
         const outerQueryFunc = argNames => ({
+          typeName: 'Outer',
           func: `eq("id", "foo")`,
           first: 10,
           offset: 0,
         });
 
         const innerQueryFunc = argNames => ({
+          typeName: 'Inner',
           filter: `eq("id", ${argNames.id})`,
         });
 
@@ -331,10 +333,14 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {
-          'Query.outer': outerQueryFunc,
-          'Outer.inner': innerQueryFunc,
-        });
+        const ast = constructAst(
+          capturedParams[3],
+          {
+            'Query.outer': outerQueryFunc,
+            'Outer.inner': innerQueryFunc,
+          },
+          [],
+        );
 
         expect(ast).toEqual({
           name: 'Test',
@@ -403,12 +409,14 @@ describe('constructAst', () => {
         `;
 
         const outerQueryFunc = argNames => ({
+          typeName: 'Outer',
           func: `eq("id", "foo")`,
           first: 10,
           offset: 0,
         });
 
         const innerQueryFunc = argNames => ({
+          typeName: 'Inner',
           filter: `eq("id", ${argNames.id})`,
           value: 'relationship',
         });
@@ -429,12 +437,16 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {
-          'Query.outer': outerQueryFunc,
-          'Outer.inner': innerQueryFunc,
-          'Outer.enum': enumQueryFunc,
-          'Outer.count': countQueryFunc
-        });
+        const ast = constructAst(
+          capturedParams[3],
+          {
+            'Query.outer': outerQueryFunc,
+            'Outer.inner': innerQueryFunc,
+            'Outer.enum': enumQueryFunc,
+            'Outer.count': countQueryFunc,
+          },
+          [],
+        );
 
         expect(ast).toEqual({
           name: 'Test',
@@ -510,12 +522,14 @@ describe('constructAst', () => {
         `;
 
         const outerQueryFunc = argNames => ({
+          typeName: 'Outer',
           func: `anyofterms("name", ${argNames.input.nested.match})`,
           first: argNames.input.first,
           offset: 0,
         });
 
         const innerQueryFunc = argNames => ({
+          typeName: 'Inner',
           filter: `eq("id", ${argNames.input.id})`,
         });
 
@@ -526,10 +540,14 @@ describe('constructAst', () => {
 
         expect(capturedParams).toHaveLength(4);
 
-        const ast = constructAst(capturedParams[3], {
-          'Query.outer': outerQueryFunc,
-          'Outer.inner': innerQueryFunc,
-        });
+        const ast = constructAst(
+          capturedParams[3],
+          {
+            'Query.outer': outerQueryFunc,
+            'Outer.inner': innerQueryFunc,
+          },
+          [],
+        );
 
         expect(ast).toEqual({
           name: 'Test',
@@ -556,8 +574,8 @@ describe('constructAst', () => {
               },
             },
             innerInput: {
-              id: '$innerInput_id'
-            }
+              id: '$innerInput_id',
+            },
           },
           blocks: [
             {

@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:integration:run": "jest integration/testSuite.ts",
-    "test:integration": "ts-node integration/run.ts",
-    "examples:apollo": "node --inspect -r ts-node/register examples/apollo/server.ts"
+    "test:integration": "jest integration/testSuite.test.ts",
+    "examples:seed": "ts-node integration/seed.ts",
+    "examples:apollo:run": "node --inspect -r ts-node/register examples/apollo/server.ts",
+    "examples:apollo": "run-s examples:seed examples:apollo:run"
   },
   "keywords": [],
   "author": "",
@@ -18,10 +19,12 @@
     "@types/node": "^10.12.19",
     "@types/uuid": "^3.4.4",
     "apollo-server": "^2.4.0",
+    "graphql-request": "^1.8.2",
     "graphql-tag": "^2.10.1",
     "grpc": "^1.18.0",
     "jest": "^24.0.0",
     "node-docker-api": "^1.1.22",
+    "npm-run-all": "^4.1.5",
     "prettier": "^1.16.4",
     "ts-jest": "^23.10.5",
     "ts-node": "^8.0.2",

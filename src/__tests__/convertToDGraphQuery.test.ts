@@ -5,11 +5,10 @@ describe('convertToDGraphQuery', () => {
   describe('simple ast', () => {
     test('generates a valid query', () => {
       const ast: Query = {
-        variables: [],
-        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
+            typeName: 'Outer',
             name: 'outer',
             predicates: [
               {
@@ -22,6 +21,7 @@ describe('convertToDGraphQuery', () => {
               },
               {
                 kind: 'EdgePredicate',
+                typeName: 'Inner',
                 name: 'inner',
                 predicates: [
                   {
@@ -59,11 +59,10 @@ describe('convertToDGraphQuery', () => {
     test('generates a valid query', () => {
       const ast: Query = {
         name: 'Test',
-        variables: [],
-        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
+            typeName: 'Outer',
             name: 'outer',
             predicates: [
               {
@@ -77,6 +76,7 @@ describe('convertToDGraphQuery', () => {
               },
               {
                 kind: 'EdgePredicate',
+                typeName: 'Inner',
                 name: 'inner',
                 predicates: [
                   {
@@ -115,11 +115,10 @@ describe('convertToDGraphQuery', () => {
     test('generates a valid query', () => {
       const ast: Query = {
         name: 'Test',
-        variables: [],
-        variableNameMap: {},
         blocks: [
           {
             kind: 'QueryBlock',
+            typeName: 'Outer',
             name: 'outer',
             predicates: [
               {
@@ -133,6 +132,7 @@ describe('convertToDGraphQuery', () => {
               },
               {
                 kind: 'EdgePredicate',
+                typeName: 'Inner',
                 value: 'inner',
                 name: 'thing',
                 predicates: [
@@ -167,102 +167,17 @@ describe('convertToDGraphQuery', () => {
     });
   });
 
-  describe('ast with variables', () => {
-    test('generates a valid query', () => {
-      const ast: Query = {
-        name: 'Test',
-        variables: [
-          {
-            name: 'foo',
-            type: 'string',
-          },
-          {
-            name: 'bar',
-            type: 'int',
-            defaultValue: 0,
-          },
-        ],
-        variableNameMap: {
-          foo: '$foo',
-          bar: '$bar',
-        },
-        blocks: [
-          {
-            kind: 'QueryBlock',
-            name: 'outer',
-            predicates: [
-              {
-                kind: 'ScalarPredicate',
-                name: 'id',
-              },
-              {
-                kind: 'ScalarPredicate',
-                name: 'enum',
-              },
-              {
-                kind: 'EdgePredicate',
-                name: 'inner',
-                predicates: [
-                  {
-                    kind: 'ScalarPredicate',
-                    name: 'id',
-                  },
-                  {
-                    kind: 'ScalarPredicate',
-                    name: 'foo',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      };
-
-      expect(convertToDGraphQuery(ast)).toEqual(`query Test
-(
-  $foo: string,
-  $bar: int = 0
-)
-{
-  outer
-  {
-    id
-    enum
-    inner
-    {
-      id
-      foo
-    }
-  }
-}`);
-    });
-  });
-
   describe('ast with func, filter, pagination, sorting', () => {
     test('generates a valid query', () => {
       const ast: Query = {
         name: 'Test',
-        variables: [
-          {
-            name: 'foo',
-            type: 'string',
-          },
-          {
-            name: 'bar',
-            type: 'int',
-            defaultValue: 0,
-          },
-        ],
-        variableNameMap: {
-          foo: '$foo',
-          bar: '$bar',
-        },
         blocks: [
           {
             kind: 'QueryBlock',
+            typeName: 'Outer',
             name: 'outer',
-            func: `eq("a", $foo)`,
-            filter: [`gt("b", $bar)`],
+            func: `eq("a", false)`,
+            filter: `gt("b", 3)`,
             first: 10,
             offset: 20,
             after: '0x40',
@@ -278,8 +193,9 @@ describe('convertToDGraphQuery', () => {
               },
               {
                 kind: 'EdgePredicate',
+                typeName: 'Inner',
                 name: 'inner',
-                filter: [`lt("c", $bar)`],
+                filter: `lt("c", 3)`,
                 first: 100,
                 offset: 0,
                 after: '0x20',
@@ -302,19 +218,19 @@ describe('convertToDGraphQuery', () => {
 
       expect(convertToDGraphQuery(ast)).toEqual(`query Test
 (
-  $foo: string,
-  $bar: int = 0
+  false: string,
+  3: int = 0
 )
 {
   outer
-    (func: eq("a", $foo), first: 10, offset: 20, after: 0x40, orderasc: "a")
-    @filter(gt("b", $bar))
+    (func: eq("a", false), first: 10, offset: 20, after: 0x40, orderasc: "a")
+    @filter(gt("b", 3))
   {
     id
     enum
     inner
       (first: 100, offset: 0, after: 0x20, orderdesc: "c")
-      @filter(lt("c", $bar))
+      @filter(lt("c", 3))
     {
       id
       foo

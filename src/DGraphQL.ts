@@ -113,7 +113,6 @@ export default class DGraphQL {
 
       const ast = constructAst(
         info,
-        info.variableValues,
         this.queryDetailsFuncsByPath,
         this.resolveBlacklist,
         this.options.debug,

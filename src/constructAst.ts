@@ -3,7 +3,6 @@ import {
   SelectionNode,
   GraphQLSchema,
   SelectionSetNode,
-  defaultFieldResolver,
 } from 'graphql';
 import {
   DGraphFragmentFunc,
@@ -19,7 +18,6 @@ import {
 import getFieldTypeName from './getTypeNameFromSchema';
 import defaultQueryDetailsFunc from './defaultQueryDetailsFunc';
 import valueNodeToValue from './valueNodeToValue';
-import getFieldResolver from './getFieldResolver';
 import getFieldArgs from './getFieldArgs';
 
 type AddBlockArgs = {
@@ -27,7 +25,6 @@ type AddBlockArgs = {
   resolveInfo: GraphQLResolveInfo;
   parentType: string;
   queryDetailsFuncsByPath: { [id: string]: DGraphFragmentFunc };
-  variableValues: { [variableName: string]: any };
   resolveBlacklist: string[];
   debug?: boolean;
 };
@@ -41,7 +38,6 @@ const addQueryBlocks = (
     resolveInfo,
     parentType,
     queryDetailsFuncsByPath,
-    variableValues,
     resolveBlacklist,
     debug = false,
   }: AddBlockArgs,
@@ -62,7 +58,7 @@ const addQueryBlocks = (
           schema: resolveInfo.schema,
           parentType,
           queryDetailsFuncsByPath,
-          variableValues,
+          variableValues: resolveInfo.variableValues,
           resolveBlacklist,
         },
         debug,
@@ -90,7 +86,6 @@ const addQueryBlocks = (
         resolveInfo,
         parentType: fieldTypeName,
         queryDetailsFuncsByPath,
-        variableValues,
         resolveBlacklist,
         debug,
       });
@@ -106,7 +101,6 @@ const addQueryBlocks = (
         resolveInfo,
         parentType,
         queryDetailsFuncsByPath,
-        variableValues,
         resolveBlacklist,
         debug,
       });
@@ -123,7 +117,6 @@ const addQueryBlocks = (
         resolveInfo,
         parentType,
         queryDetailsFuncsByPath,
-        variableValues,
         resolveBlacklist,
         debug,
       });
@@ -139,7 +132,6 @@ const addPredicates = (
     resolveInfo,
     parentType,
     queryDetailsFuncsByPath,
-    variableValues,
     resolveBlacklist,
     debug,
   }: AddBlockArgs,
@@ -155,7 +147,7 @@ const addPredicates = (
         schema: resolveInfo.schema,
         parentType,
         queryDetailsFuncsByPath,
-        variableValues,
+        variableValues: resolveInfo.variableValues,
         resolveBlacklist,
       });
 
@@ -184,7 +176,6 @@ const addPredicates = (
           resolveInfo,
           parentType: fieldTypeName,
           queryDetailsFuncsByPath,
-          variableValues,
           resolveBlacklist,
           debug,
         });
@@ -209,7 +200,6 @@ const addPredicates = (
         resolveInfo,
         parentType,
         queryDetailsFuncsByPath,
-        variableValues,
         resolveBlacklist,
         debug,
       });
@@ -223,7 +213,6 @@ const addPredicates = (
         resolveInfo,
         parentType,
         queryDetailsFuncsByPath,
-        variableValues,
         resolveBlacklist,
         debug,
       });
@@ -314,7 +303,6 @@ const getFieldInfo = (
 
 const constructAst = (
   resolveInfo: GraphQLResolveInfo,
-  variableValues: { [name: string]: any },
   queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc },
   resolveBlacklist: string[], // paths we should not add to a Dgraph query
   debug: boolean = false,
@@ -331,7 +319,6 @@ const constructAst = (
     resolveInfo,
     parentType: parentType.name,
     queryDetailsFuncsByPath: queryDetailsFuncsById,
-    variableValues,
     resolveBlacklist,
     debug,
   });
