@@ -1,46 +1,43 @@
-Still very WIP.
+> **Pre-Beta** This library is barely tested, the usage is not great, and the features are lacking. I would not use it. I'm still working. But, feel free to look around and give feedback.
 
 # What is it trying to do?
 
 Ultimately, the goal is to turn a GraphQL query like this
 
 ```graphql
-input ComplexInput {
-  nameMatch: String
-}
-
-query GetFooWithBar($fooId: ID!, $input: ComplexInput) {
-  foo(id: $fooId) {
+query ListMovies($first: Int, $offset: Int, $nameMatch: String) {
+  movies(first: $first, offset: $offset, filter: { nameMatch: $nameMatch }) {
     id
-    name
-    barCount
-    bar(input: $input) {
+    title
+    actorCount
+    actors {
       id
       name
-      type
-      etc
     }
   }
 }
+```
+```
+ListMovies(10, 0, "Star")
 ```
 
 Into a GraphQL+- query like this
 
 ```graphql+-
 {
-  foo(func: eq(id, "bar")) {
+  movies(func: anyofterms(name, "Star"), first: 10, offset: 0) @filter(has(Movie)) {
     id
     name@en
-    barCount: count(bar)
-    bar @filter(anyofterms(name, "match me")) {
+    actorCount: count(starring)
+    starring {
       id
       name
-      type: barType@en
-      etc
     }
   }
 }
 ```
+
+Although GraphQL and GraphQL+- are visually similar, there's actually a good number of translations which have to happen to close the gap. That's the focus of this library.
 
 # Usage
 
