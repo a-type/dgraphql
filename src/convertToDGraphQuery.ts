@@ -34,7 +34,7 @@ const handleEdgePredicate = (predicate: EdgePredicateNode): string[] => {
     ? `@filter(${[`has(${predicate.typeName})`, predicate.filter].join(
         ' AND ',
       )})`
-    : `@filter(has${predicate.typeName})`;
+    : `@filter(has(${predicate.typeName}))`;
   const params = createPaginationParams(predicate).filter(Boolean);
   return [
     `${predicate.name}${value}`,

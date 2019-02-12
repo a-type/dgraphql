@@ -39,13 +39,14 @@ describe('convertToDGraphQuery', () => {
         ],
       };
 
-      expect(convertToDGraphQuery(ast)).toEqual(`query Test
-{
+      expect(convertToDGraphQuery(ast)).toEqual(`{
   outer
+    (func: has(Outer))
   {
     id
     enum
     inner
+      @filter(has(Inner))
     {
       id
       foo
@@ -95,13 +96,14 @@ describe('convertToDGraphQuery', () => {
         ],
       };
 
-      expect(convertToDGraphQuery(ast)).toEqual(`query Test
-{
+      expect(convertToDGraphQuery(ast)).toEqual(`{
   outer
+    (func: has(Outer))
   {
     id
     enum@en
     inner
+      @filter(has(Inner))
     {
       id
       foo@jp:en:.
@@ -151,13 +153,14 @@ describe('convertToDGraphQuery', () => {
         ],
       };
 
-      expect(convertToDGraphQuery(ast)).toEqual(`query Test
-{
+      expect(convertToDGraphQuery(ast)).toEqual(`{
   outer
+    (func: has(Outer))
   {
     uuid: id
     enum
     thing: inner
+      @filter(has(Inner))
     {
       id
       foo
@@ -216,21 +219,16 @@ describe('convertToDGraphQuery', () => {
         ],
       };
 
-      expect(convertToDGraphQuery(ast)).toEqual(`query Test
-(
-  false: string,
-  3: int = 0
-)
-{
+      expect(convertToDGraphQuery(ast)).toEqual(`{
   outer
     (func: eq("a", false), first: 10, offset: 20, after: 0x40, orderasc: "a")
-    @filter(gt("b", 3))
+    @filter(has(Outer) AND gt("b", 3))
   {
     id
     enum
     inner
       (first: 100, offset: 0, after: 0x20, orderdesc: "c")
-      @filter(lt("c", 3))
+      @filter(has(Inner) AND lt("c", 3))
     {
       id
       foo

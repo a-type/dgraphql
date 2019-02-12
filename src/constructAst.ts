@@ -309,6 +309,13 @@ const constructAst = (
 ): Query => {
   const { operation, parentType } = resolveInfo;
 
+  if (debug) {
+    console.debug('DGraphQL: Operation name');
+    console.debug(operation.name ? operation.name.value : 'None');
+    console.debug('DGraphQL: Variables');
+    console.debug(JSON.stringify(resolveInfo.variableValues));
+  }
+
   const ast: Query = {
     blocks: [],
     name: operation.name && operation.name.value,

@@ -85,8 +85,6 @@ describe('constructAst', () => {
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [],
-          variableNameMap: {},
           blocks: [
             {
               kind: 'QueryBlock',
@@ -147,16 +145,6 @@ describe('constructAst', () => {
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [
-            {
-              name: 'scalar',
-              type: 'int',
-              defaultValue: 3,
-            },
-          ],
-          variableNameMap: {
-            scalar: '$scalar',
-          },
           blocks: [
             {
               kind: 'QueryBlock',
@@ -259,12 +247,11 @@ describe('constructAst', () => {
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [],
-          variableNameMap: {},
           blocks: [
             {
               kind: 'QueryBlock',
               name: 'outer',
+              typeName: 'Outer',
               func: `eq("id", "foo")`,
               first: 10,
               offset: 0,
@@ -280,6 +267,7 @@ describe('constructAst', () => {
                 {
                   kind: 'EdgePredicate',
                   name: 'inner',
+                  typeName: 'Inner',
                   filter: `eq("id", "bar")`,
                   predicates: [
                     {
@@ -344,20 +332,11 @@ describe('constructAst', () => {
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [
-            {
-              name: 'innerId',
-              type: 'string',
-              defaultValue: undefined,
-            },
-          ],
-          variableNameMap: {
-            innerId: '$innerId',
-          },
           blocks: [
             {
               kind: 'QueryBlock',
               name: 'outer',
+              typeName: 'Outer',
               func: `eq("id", "foo")`,
               first: 10,
               offset: 0,
@@ -373,6 +352,7 @@ describe('constructAst', () => {
                 {
                   kind: 'EdgePredicate',
                   name: 'inner',
+                  typeName: 'Inner',
                   filter: `eq("id", $innerId)`,
                   predicates: [
                     {
@@ -433,6 +413,9 @@ describe('constructAst', () => {
         await execute({
           schema,
           document,
+          variableValues: {
+            innerId: 'bar',
+          },
         });
 
         expect(capturedParams).toHaveLength(4);
@@ -446,24 +429,16 @@ describe('constructAst', () => {
             'Outer.count': countQueryFunc,
           },
           [],
+          true,
         );
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [
-            {
-              name: 'innerId',
-              type: 'string',
-              defaultValue: undefined,
-            },
-          ],
-          variableNameMap: {
-            innerId: '$innerId',
-          },
           blocks: [
             {
               kind: 'QueryBlock',
               name: 'outer',
+              typeName: 'Outer',
               func: `eq("id", "foo")`,
               first: 10,
               offset: 0,
@@ -486,8 +461,9 @@ describe('constructAst', () => {
                 {
                   kind: 'EdgePredicate',
                   name: 'inner',
+                  typeName: 'Inner',
                   value: 'relationship',
-                  filter: `eq("id", $innerId)`,
+                  filter: `eq("id", "bar")`,
                   predicates: [
                     {
                       kind: 'ScalarPredicate',
@@ -536,6 +512,17 @@ describe('constructAst', () => {
         await execute({
           schema,
           document,
+          variableValues: {
+            input: {
+              first: 10,
+              nested: {
+                match: 'foo',
+              },
+            },
+            innerInput: {
+              id: 'bar',
+            },
+          },
         });
 
         expect(capturedParams).toHaveLength(4);
@@ -551,38 +538,13 @@ describe('constructAst', () => {
 
         expect(ast).toEqual({
           name: 'Test',
-          variables: [
-            {
-              name: 'input_first',
-              type: 'int',
-            },
-            {
-              name: 'input_nested_match',
-              type: 'string',
-            },
-            {
-              name: 'innerInput_id',
-              type: 'string',
-              defaultValue: undefined,
-            },
-          ],
-          variableNameMap: {
-            input: {
-              first: '$input_first',
-              nested: {
-                match: '$input_nested_match',
-              },
-            },
-            innerInput: {
-              id: '$innerInput_id',
-            },
-          },
           blocks: [
             {
               kind: 'QueryBlock',
+              typeName: 'Outer',
               name: 'outer',
-              func: `anyofterms("name", $input_nested_match)`,
-              first: '$input_first',
+              func: `anyofterms("name", "foo")`,
+              first: 10,
               offset: 0,
               predicates: [
                 {
@@ -595,8 +557,9 @@ describe('constructAst', () => {
                 },
                 {
                   kind: 'EdgePredicate',
+                  typeName: 'Inner',
                   name: 'inner',
-                  filter: `eq("id", $innerInput_id)`,
+                  filter: `eq("id", "bar")`,
                   predicates: [
                     {
                       kind: 'ScalarPredicate',

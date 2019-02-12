@@ -43,7 +43,9 @@ describe('runAstQuery', () => {
       };
 
       const mockTxn = {
-        query: jest.fn().mockResolvedValue(null),
+        query: jest.fn().mockResolvedValue({
+          getJson: () => Promise.resolve({}),
+        }),
         commit: jest.fn().mockResolvedValue(null),
         discard: jest.fn().mockResolvedValue(null),
       };
