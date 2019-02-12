@@ -18,7 +18,7 @@ query ListMovies($first: Int, $offset: Int, $nameMatch: String) {
 }
 ```
 ```
-ListMovies(10, 0, "Star")
+ListMovies($first: 10, $offset: 0, $nameMatch: "Star")
 ```
 
 Into a GraphQL+- query like this
