@@ -1,54 +1,147 @@
-Still very WIP.
+> **Pre-Beta** This library is barely tested, the usage is not great, and the features are lacking. I would not use it. I'm still working. But, feel free to look around and give feedback.
 
 # What is it trying to do?
 
 Ultimately, the goal is to turn a GraphQL query like this
 
 ```graphql
-input ComplexInput {
-  nameMatch: String
-}
-
-query GetFooWithBar($fooId: ID!, $input: ComplexInput) {
-  foo(id: $fooId) {
+query ListMovies($first: Int, $offset: Int, $nameMatch: String) {
+  movies(first: $first, offset: $offset, filter: { nameMatch: $nameMatch }) {
     id
-    name
-    barCount
-    bar(input: $input) {
+    title
+    actorCount
+    actors {
       id
       name
-      type
-      etc
     }
   }
 }
+```
+```
+ListMovies($first: 10, $offset: 0, $nameMatch: "Star")
 ```
 
 Into a GraphQL+- query like this
 
 ```graphql+-
-query GetFooWithBar($fooId: string!, $input_nameMatch: string) {
-  foo(func: eq(id, $fooId)) {
+{
+  movies(func: anyofterms(name, "Star"), first: 10, offset: 0) @filter(has(Movie)) {
     id
     name@en
-    barCount: count(bar)
-    bar @filter(anyofterms(name, $input_nameMatch)) {
+    actorCount: count(starring)
+    starring {
       id
       name
-      type: barType@en
-      etc
     }
   }
 }
 ```
 
-To convert GraphQL to GraphQL+-, we need to:
+Although GraphQL and GraphQL+- are visually similar, there's actually a good number of translations which have to happen to close the gap. That's the focus of this library.
 
-- Flatten all input variables into scalar types (GraphQL+- does not support complex variable types)
-- Define the underlying `func`/`filter`/paginations necessary to fetch the data, utilizing the arguments passed to each field
-- Attach aliases, languages, and custom value resolution to predicates as specified by the user
+# Usage
+
+Current pre-beta usage looks like this:
+
+```ts
+const typeDefs = gql`
+  type Person {
+    id: ID!
+    name: String!
+    starredIn: [Movie!]!
+    directed: [Movie!]!
+    directedCount: Int!
+    roleCount: Int!
+  }
+
+  type Movie {
+    id: ID!
+    title: String!
+    releaseDate: String!
+    revenue: Int
+    runningTime: Int
+    starring: [Person!]!
+    director: Person!
+  }
+
+  input ArbitraryNestedInput {
+    a: String
+  }
+
+  input MovieFilterInput {
+    titleMatch: String
+    revenueGt: Int
+    revenueLt: Int
+    arbitrary: ArbitraryNestedInput
+  }
+
+  type Query {
+    movies(
+      input: MovieFilterInput = {
+        titleMatch: ""
+        revenueGt: 0
+        arbitrary: { a: "foo" }
+      }
+      first: Int = 10
+      offset: Int = 0
+    ): [Movie!]!
+    person(id: ID!): Person
+  }
+`;
+
+const dgraphql = new DGraphQL(dgraphClient, { debug: true });
+
+const resolvers = {
+  Query: {
+    movies: dgraphql.createQueryResolver(argNames => {
+      const orderedFilters = [
+        argNames.input.titleMatch &&
+          dgraphql.filters.anyOfTerms('title', argNames.input.titleMatch),
+        argNames.input.revenueGt &&
+          dgraphql.filters.greaterThan('revenue', argNames.input.revenueGt),
+        argNames.input.revenueLt &&
+          dgraphql.filters.lessThan('revenue', argNames.input.revenueLt),
+      ].filter(Boolean); // filter out falsy values
+      const [func, ...filters] = orderedFilters;
+      return {
+        typeName: 'Movie',
+        func,
+        filter: dgraphql.filters.and(...filters),
+        first: argNames.first,
+        offset: argNames.offset,
+      };
+    }),
+
+    person: dgraphql.createQueryResolver(args => ({
+      typeName: 'Person',
+      func: dgraphql.filters.uid(args.id),
+    })),
+  },
+
+  Movie: {
+    id: dgraphql.createQueryResolver(_argNames => ({
+      value: 'uid',
+    })),
+    title: dgraphql.createQueryResolver(_argNames => ({
+      value: 'name',
+    })),
+  },
+
+  Person: {
+    id: dgraphql.createQueryResolver(_argNames => ({
+      value: 'uid',
+    })),
+  },
+};
+
+dgraphql.readResolvers(resolvers);
+```
+
+Not the most terse thing in the world! I'd like to improve the overall DX without sacrificing much of the specificity or flexibility of using JS to define the outcomes in the resolvers.
 
 # DGraphQL Lifcycle
+
+Here's how DGraphQL works right now:
 
 ## 1. Register DGraphQL resolvers
 
@@ -66,8 +159,6 @@ When a DGraphQL resolver is called, we begin processing the request and construc
 
 Using the top-level field of the query, we create query block(s) in our AST. We call the functions users provided in their original resolver definitions to gather `func`, `filter`, and other Dgraph parameters (even aliases and computed predicate values) based on the args passed to the field itself.
 
-Then we take each argument value and extract it into a query variable, generating a new name for it if necessary and registering it to our AST. Essentially we want to 'promote' each argument into a configurable variable for the Dgraph query to give our queries the best chance at being reusable.
-
 ## 5. Create predicate block AST nodes
 
 Query blocks and predicate blocks are ultimately pretty similar. We again call the functions users provided in their resolvers. This is an interesting thing, though, because we are still actually running the root-field resolver, not the nested ones. We use the provided `resolveInfo` AST for the GraphQL query to anticipate 'where the query is going' and gather any user-provided data at those levels.
@@ -80,132 +171,6 @@ Once we process all nested fields, we finalize the AST and send it to a processo
 
 Now the easy part... just pass it along to the Dgraph-JS client and send the result on.
 
-# Scratchpad for usage ideas:
+## 8. No-op any nested resolvers
 
-## Resolver-based
-
-### Pros
-
-- Very explicit
-- JS logic is available to the user
-- Few assumptions
-- TS-based suggestions reduce need to remember all DGraph language features
-
-### Cons
-
-- Verbose
-- Impossible to identify DGraph powered resources from scanning the schema
-
-```ts
-const typeDefs = gql`
-  type Query {
-    foo(id: ID!): Foo!
-    foos: [Foo!]!
-  }
-
-  type Foo {
-    id: ID!
-    name: String!
-    bars(barFilter: BarFilterInput, first: Int, offset: Int): [Bar!]!
-  }
-
-  type Bar {
-    id: ID!
-    type: BarType!
-    score: Int!
-  }
-
-  input BarFilterInput {
-    type: BarType
-    scoreGt: Int
-  }
-
-  enum BarType {
-    Baz
-    Corge
-  }
-`;
-
-const resolvers = {
-  Query: {
-    foo: dgraphql.createQueryResolver(args => ({
-      func: dgraphql.func.eq('id', args.id),
-    })),
-  },
-
-  Foo: {
-    name: dgraphql.createQueryResolver(args => ({
-      langauge: 'en',
-    })),
-    bars: dgraphql.createQueryResolver(args => {
-      const filters = [];
-      if (args.type !== undefined) {
-        filters.push(dgraphql.func.eq('type', args.barFilter.type));
-      }
-      if (args.scoreGt !== undefined) {
-        filters.push(dgraphql.func.gt('score', args.barFilter.scoreGt));
-      }
-
-      return {
-        filter: dgraphql.filters.and(filters),
-        first: args.first,
-        offset: args.offset,
-      };
-    }),
-  },
-};
-```
-
-## Directive-based (neo4j-graphql-js style)
-
-### Pros
-
-- Very terse
-- Information is embedded in schema
-- No resolver work necessary
-
-### Cons
-
-- "Magic" around null values - will unused filters just disappear?
-- No JS logic available to do more complex stuff
-- I'm not sure I like tons of directives... creates a lot of noise
-
-```ts
-const typeDefs = gql`
-  type Query {
-    foo(id: ID!): Foo! @dgraphFunc("eq", "id", "{args.id}")
-    foos: [Foo!]! @dgraphFirst(10) @dgraphOffset(0)
-  }
-
-  type Foo {
-    id: ID!
-    name: String! @dgraphLang("en")
-    bars(barFilter: BarFilterInput, first: Int, offset: Int): [Bar!]!
-      @dgraphFilter("eq", "type", "{args.barFilter.type}")
-      @dgraphFilter("gt", "score", "{args.barFilter.scoreGt}")
-      @dgraphFirst("{args.first}")
-      @graphOffset("{args.offset}")
-  }
-
-  type Bar {
-    id: ID!
-    type: BarType!
-    score: Int!
-  }
-
-  input BarFilterInput {
-    type: BarType
-    scoreGt: Int
-  }
-
-  enum BarType {
-    Baz
-    Corge
-  }
-`;
-
-// ...
-
-// auto-creates resolvers based on annotations
-const dgraphSchema = augmentSchema(schema);
-```
+If the user has defined more `dgraphql` resolvers further down the tree, we tell them to just return the data they receive from their `parent`, since the collected query has already been resolved at the top level. However, if the user has defined their own non-dgraphql resolvers, we will run those as usual.
