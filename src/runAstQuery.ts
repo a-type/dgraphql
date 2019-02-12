@@ -14,25 +14,16 @@ const runAstQuery = async (
     console.debug(JSON.stringify(ast));
     console.debug('DGraphQL Query:');
     console.debug(queryString);
-    console.debug('Variables:');
-    console.debug(JSON.stringify(ast.variables));
   }
-
-  const mappedVariables = ast.variables.reduce<{
-    [name: string]: DGraphScalar;
-  }>((acc, v) => {
-    acc[v.name] = v.value;
-    return acc;
-  }, {});
 
   const txn = client.newTxn();
-  const result = await txn.queryWithVars(queryString, mappedVariables);
-  await txn.commit();
+  const result = await txn.query(queryString);
+  const json = await result.getJson();
   if (debug) {
     console.debug('Dgraph result:');
-    console.debug(result);
+    console.debug(json);
   }
-  return result;
+  return json;
 };
 
 export default runAstQuery;

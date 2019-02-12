@@ -3,24 +3,24 @@ import {
   SelectionNode,
   GraphQLSchema,
   SelectionSetNode,
+  defaultFieldResolver,
 } from 'graphql';
 import {
   DGraphFragmentFunc,
   QueryBlockNode,
   Query,
-  QueryVariable,
-  ResolverArgs,
   ParentNode,
   EdgePredicateNode,
   ScalarPredicateNode,
   DGraphFragmentDetails,
+  EdgePredicateDetails,
+  QueryBlockDetails,
 } from './types';
 import getFieldTypeName from './getTypeNameFromSchema';
 import defaultQueryDetailsFunc from './defaultQueryDetailsFunc';
 import valueNodeToValue from './valueNodeToValue';
 import getFieldResolver from './getFieldResolver';
 import getFieldArgs from './getFieldArgs';
-import getArgTypeMap from './getArgTypeMap';
 
 type AddBlockArgs = {
   selectionSet: SelectionSetNode;
@@ -28,6 +28,7 @@ type AddBlockArgs = {
   parentType: string;
   queryDetailsFuncsByPath: { [id: string]: DGraphFragmentFunc };
   variableValues: { [variableName: string]: any };
+  resolveBlacklist: string[];
   debug?: boolean;
 };
 
@@ -41,6 +42,7 @@ const addQueryBlocks = (
     parentType,
     queryDetailsFuncsByPath,
     variableValues,
+    resolveBlacklist,
     debug = false,
   }: AddBlockArgs,
 ): Query => {
@@ -54,7 +56,6 @@ const addQueryBlocks = (
         fieldTypeName,
         dgraphFragmentDetails: queryDetails,
         skip,
-        variables,
       } = getFieldInfo(
         {
           selection,
@@ -62,6 +63,7 @@ const addQueryBlocks = (
           parentType,
           queryDetailsFuncsByPath,
           variableValues,
+          resolveBlacklist,
         },
         debug,
       );
@@ -73,13 +75,10 @@ const addQueryBlocks = (
         return ast;
       }
 
-      // add any extracted variables to the query
-      ast.variables.push(...variables);
-
       const queryBlock: QueryBlockNode = {
         kind: 'QueryBlock',
         name: selection.name.value,
-        ...queryDetails,
+        ...(queryDetails as QueryBlockDetails),
         predicates: [],
       };
 
@@ -92,6 +91,7 @@ const addQueryBlocks = (
         parentType: fieldTypeName,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
         debug,
       });
 
@@ -107,6 +107,7 @@ const addQueryBlocks = (
         parentType,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
         debug,
       });
     } else {
@@ -123,6 +124,7 @@ const addQueryBlocks = (
         parentType,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
         debug,
       });
     }
@@ -138,6 +140,7 @@ const addPredicates = (
     parentType,
     queryDetailsFuncsByPath,
     variableValues,
+    resolveBlacklist,
     debug,
   }: AddBlockArgs,
 ): Query => {
@@ -146,7 +149,6 @@ const addPredicates = (
       const {
         fieldTypeName,
         dgraphFragmentDetails: queryDetails,
-        variables,
         skip,
       } = getFieldInfo({
         selection,
@@ -154,6 +156,7 @@ const addPredicates = (
         parentType,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
       });
 
       // skip means this is a field the user wants to resolve outside
@@ -163,9 +166,6 @@ const addPredicates = (
         return ast;
       }
 
-      // add any extracted variables to the query
-      ast.variables.push(...variables);
-
       const selectionSet = selection.selectionSet;
       if (selectionSet) {
         // if the selection has a nested selection set,
@@ -173,7 +173,7 @@ const addPredicates = (
         const edgePredicate: EdgePredicateNode = {
           kind: 'EdgePredicate',
           name: selection.name.value,
-          ...queryDetails,
+          ...(queryDetails as EdgePredicateDetails),
           predicates: [],
         };
 
@@ -185,6 +185,7 @@ const addPredicates = (
           parentType: fieldTypeName,
           queryDetailsFuncsByPath,
           variableValues,
+          resolveBlacklist,
           debug,
         });
 
@@ -209,6 +210,7 @@ const addPredicates = (
         parentType,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
         debug,
       });
     } else {
@@ -222,6 +224,7 @@ const addPredicates = (
         parentType,
         queryDetailsFuncsByPath,
         variableValues,
+        resolveBlacklist,
         debug,
       });
     }
@@ -239,10 +242,8 @@ type FieldInfo = {
   fieldName: string;
   /** the type name of the field's return value */
   fieldTypeName: string;
-  /** argument name map for this field's arguments, if any */
-  argNames: { [path: string]: any };
-  /** the graphql variables needed for this field in the root query */
-  variables: QueryVariable[];
+  /** fully defaulted arg values passed to resolver */
+  argValues: { [name: string]: any };
   /** user-supplied query details for building the DGraph query */
   dgraphFragmentDetails: DGraphFragmentDetails;
 };
@@ -254,12 +255,14 @@ const getFieldInfo = (
     parentType,
     queryDetailsFuncsByPath,
     variableValues,
+    resolveBlacklist,
   }: {
     selection: SelectionNode;
     schema: GraphQLSchema;
     parentType: string;
     queryDetailsFuncsByPath: { [path: string]: DGraphFragmentFunc };
     variableValues: { [name: string]: any };
+    resolveBlacklist: string[];
   },
   debug: boolean = false,
 ): FieldInfo => {
@@ -269,31 +272,13 @@ const getFieldInfo = (
   }
   if (selection.kind === 'Field') {
     const fieldName = selection.name.value;
-    const resolver = getFieldResolver(schema, parentType, fieldName);
     const args = getFieldArgs(schema, parentType, fieldName);
     const queryDetailsFunc =
       queryDetailsFuncsByPath[`${parentType}.${fieldName}`];
 
-    /**
-     * ok, we have 2 things here... we have the explicit arguments passed to this
-     * field (selection.arguments) by the user. And we have any default arguments
-     * which are defined in the schema itself (we got those with getFieldArgs())
-     * Now, the trick is to create two structures:
-     * 1. A list of uniquely named variables with the real argument values
-     * 2. A deep map of the actual structured provided arguments, which
-     *    map to the unique variable names assigned in 1.
-     * The variable names (1) will be used in the final Dgraph query. The name
-     * map (2) will be used in the predicates to reference those variables for use.
-     * To the user of this library, it will appear that they are just rearranging
-     * GraphQL args down to Dgraph. But in reality we are promoting all those args
-     * as variables and replacing their usage in predicates with the variable names.
-     */
-    const variables: QueryVariable[] = [];
-    const argNames: { [name: string]: any } = {};
-
     // first, combine default values and provided values into one structure
     const argValues = args
-      .filter(arg => !!arg.defaultValue)
+      .filter(arg => arg.defaultValue !== undefined)
       .reduce<{ [name: string]: any }>((map, arg) => {
         map[arg.name] = arg.defaultValue;
         // lookup provided value if present
@@ -305,90 +290,23 @@ const getFieldInfo = (
         }
         return map;
       }, {});
-    const argTypes = getArgTypeMap(args);
-
-    // using array destructuring like a tuple, we read over the structure and extract
-    // flattened names.
-    Object.keys(argValues).reduce<[QueryVariable[], { [name: string]: any }]>(
-      ([variableValues, argNames], argName) => {
-        const argValue = argValues[argName];
-        const baseArgName = `${parentType}_${fieldName}_${argName}`;
-        // recursively work through the structure of the value, extracting names
-        const flattenAndAddValues = (
-          value: any,
-          key: any,
-          nameMapParent: { [name: string]: any },
-          typeMapParent: { [name: string]: any },
-          variableName: string,
-        ) => {
-          if (typeof value === 'object') {
-            if (value instanceof Array) {
-              // mimic structure in our name map
-              nameMapParent[key] = [];
-              // map each array item to flattener
-              value.forEach((subValue, index) => {
-                flattenAndAddValues(
-                  subValue,
-                  index,
-                  nameMapParent[index],
-                  // this is a special identifier, see getArgTypeMap comment
-                  typeMapParent.arrayOf,
-                  `${baseArgName}_${index}`,
-                );
-              });
-              return;
-            } else {
-              // mimic structure in our name map
-              nameMapParent[key] = {};
-              // map each value to flattener
-              Object.keys(value).forEach(valueKey =>
-                flattenAndAddValues(
-                  value[valueKey],
-                  valueKey,
-                  nameMapParent[key],
-                  typeMapParent[key],
-                  `${variableName}_${valueKey}`,
-                ),
-              );
-              return;
-            }
-          } else {
-            // assign final name to name map
-            nameMapParent[key] = `$${variableName}`;
-            // create a new variable by that name with correct value
-            variableValues.push({
-              name: `$${variableName}`,
-              value,
-              type: typeMapParent[key],
-            });
-
-            return;
-          }
-        };
-
-        flattenAndAddValues(argValue, argName, argNames, argTypes, baseArgName);
-
-        return [variableValues, argNames];
-      },
-      [variables, argNames],
-    );
 
     const queryDetails = (queryDetailsFunc || defaultQueryDetailsFunc)(
-      argNames,
+      argValues,
     );
     if (debug) {
       console.debug('DGraphQL query field resolver info');
       console.debug(
-        `path: ${parentType}.${fieldName}, args: ${JSON.stringify(argNames)}`,
+        `path: ${parentType}.${fieldName}, args: ${JSON.stringify(argValues)}`,
       );
       console.debug(`user info: ${JSON.stringify(queryDetails)}`);
     }
     return {
-      skip: resolver && !queryDetailsFunc,
+      // this feels pretty brittle FIXME
+      skip: resolveBlacklist.includes([parentType, fieldName].join('.')),
       fieldName,
       fieldTypeName: getFieldTypeName(schema, parentType, fieldName),
-      argNames,
-      variables,
+      argValues,
       dgraphFragmentDetails: queryDetails,
     };
   }
@@ -398,13 +316,12 @@ const constructAst = (
   resolveInfo: GraphQLResolveInfo,
   variableValues: { [name: string]: any },
   queryDetailsFuncsById: { [id: string]: DGraphFragmentFunc },
+  resolveBlacklist: string[], // paths we should not add to a Dgraph query
   debug: boolean = false,
 ): Query => {
   const { operation, parentType } = resolveInfo;
 
   const ast: Query = {
-    variables: [],
-    variableNameMap: {},
     blocks: [],
     name: operation.name && operation.name.value,
   };
@@ -415,6 +332,7 @@ const constructAst = (
     parentType: parentType.name,
     queryDetailsFuncsByPath: queryDetailsFuncsById,
     variableValues,
+    resolveBlacklist,
     debug,
   });
 };

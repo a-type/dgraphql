@@ -5,7 +5,6 @@ import {
   ScalarPredicateNode,
   EdgePredicateNode,
   FilterableNode,
-  QueryVariable,
 } from './types';
 
 const isScalarPredicate = (
@@ -31,7 +30,11 @@ const level = (items, lineCreator) =>
 
 const handleEdgePredicate = (predicate: EdgePredicateNode): string[] => {
   const value = predicate.value ? `: ${predicate.value}` : '';
-  const filter = predicate.filter ? `@filter(${predicate.filter})` : '';
+  const filter = predicate.filter
+    ? `@filter(${[`has(${predicate.typeName})`, predicate.filter].join(
+        ' AND ',
+      )})`
+    : `@filter(has${predicate.typeName})`;
   const params = createPaginationParams(predicate).filter(Boolean);
   return [
     `${predicate.name}${value}`,
@@ -59,11 +62,24 @@ const handlePredicate = (predicate: PredicateNode): string[] => {
 
 const handleQueryBlock = (block: QueryBlockNode): string[] => {
   const params = [
-    block.func ? `func: ${block.func}` : null,
+    // use user func, or if they don't specify one, assert type
+    block.func ? `func: ${block.func}` : `func: has(${block.typeName})`,
     ...createPaginationParams(block),
   ].filter(Boolean);
 
-  const filter = block.filter ? `@filter(${block.filter})` : '';
+  // if user did specify a func, we should assert type as part of their filter
+  let filter = '';
+  if (block.filter) {
+    if (block.func) {
+      filter = `@filter(${[`has(${block.typeName})`, block.filter].join(
+        ' AND ',
+      )})`;
+    } else {
+      filter = `@filter(${block.filter})`;
+    }
+  } else if (block.func) {
+    filter = `@filter(has(${block.typeName}))`;
+  }
   return [
     `${block.name}`,
     `  (${params.join(', ')})`,
@@ -74,34 +90,8 @@ const handleQueryBlock = (block: QueryBlockNode): string[] => {
   ];
 };
 
-const handleVariables = (variables: QueryVariable[]) => {
-  const formatter = v => [
-    `${v.name}: ${v.type}${
-      v.defaultValue !== undefined ? ` = ${v.defaultValue}` : ''
-    }`,
-  ];
-  if (variables.length) {
-    return [
-      `(`,
-      ...level(variables, formatter).map((s, i) =>
-        i !== variables.length - 1 ? `${s},` : s,
-      ),
-      `)`,
-    ];
-  }
-  return [];
-};
-
 const convertToDGraphQuery = (ast: Query): string => {
-  const name = ast.name || ast.variables.length ? 'unnamed' : null;
-
-  return lines([
-    name && `query ${name}`,
-    ...handleVariables(ast.variables),
-    `{`,
-    ...level(ast.blocks, handleQueryBlock),
-    `}`,
-  ]);
+  return lines([`{`, ...level(ast.blocks, handleQueryBlock), `}`]);
 };
 
 export default convertToDGraphQuery;

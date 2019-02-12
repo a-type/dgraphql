@@ -27,8 +27,7 @@
     {
       "type": "node",
       "request": "attach",
-      "name": "Attach",
-      "processId": "${command:PickProcess}"
+      "name": "Attach"
     }
   ]
 }

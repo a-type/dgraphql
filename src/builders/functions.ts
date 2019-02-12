@@ -1,4 +1,4 @@
-import { DGraphScalar, QueryVariable } from '../types';
+import { DGraphScalar } from '../types';
 
 export enum FilterName {
   AllOfTerms = 'allofterms',
@@ -22,13 +22,6 @@ export enum FilterName {
 }
 
 export type GeoLongLat = [number, number];
-
-export type FunctionBuilderContext = {
-  // we will be mutating this
-  variables: QueryVariable[];
-  // namespace for new created variables
-  baseName: string;
-};
 
 const joinTerms = (terms: string | string[], moreTerms: string[]): string => {
   if (terms instanceof Array || moreTerms) {

@@ -17,10 +17,6 @@ export type Func = string; // todo
 export type Filter = string; // todo
 export type Language = string; // todo
 
-export type NameMap = {
-  [key: string]: any;
-};
-
 export type FilterableDetails = {
   filter?: Filter;
   first?: number | string;
@@ -30,13 +26,19 @@ export type FilterableDetails = {
   orderdesc?: string;
 };
 
-export type EdgePredicateDetails = FilterableDetails & {
-  value?: string;
+export type TypedNodeDetails = {
+  typeName: string;
 };
 
-export type QueryBlockDetails = FilterableDetails & {
-  func?: Func;
-};
+export type EdgePredicateDetails = FilterableDetails &
+  TypedNodeDetails & {
+    value?: string;
+  };
+
+export type QueryBlockDetails = FilterableDetails &
+  TypedNodeDetails & {
+    func?: Func;
+  };
 
 export type ScalarPredicateDetails = {
   value?: string;
@@ -48,7 +50,9 @@ export type DGraphFragmentDetails =
   | EdgePredicateDetails
   | ScalarPredicateDetails;
 
-export type DGraphFragmentFunc = (argNames: NameMap) => DGraphFragmentDetails;
+export type DGraphFragmentFunc = (
+  argValues: ResolverArgs,
+) => DGraphFragmentDetails;
 
 export type QueryResolver = {
   (parent: any, args: ResolverArgs, ctx: any, info: GraphQLResolveInfo): any;
@@ -57,15 +61,6 @@ export type QueryResolver = {
 /**
  * Types that define the AST from which we generate the DGraph query
  */
-
-export type QueryVariableType = 'int' | 'float' | 'bool' | 'string';
-
-export type QueryVariable = {
-  name: string;
-  value: DGraphScalar;
-  type: QueryVariableType;
-  defaultValue?: DGraphScalar;
-};
 
 export interface FilterableNode {
   filter?: Filter;
@@ -78,6 +73,10 @@ export interface FilterableNode {
 
 export interface ParentNode {
   predicates: PredicateNode[];
+}
+
+export interface TypedNode {
+  typeName: string;
 }
 
 export type ScalarPredicateNode = {
@@ -96,6 +95,7 @@ export type ScalarPredicateNode = {
 };
 
 export type EdgePredicateNode = FilterableNode &
+  TypedNode &
   ParentNode & {
     kind: 'EdgePredicate';
     /**
@@ -113,6 +113,7 @@ export type EdgePredicateNode = FilterableNode &
 export type PredicateNode = ScalarPredicateNode | EdgePredicateNode;
 
 export type QueryBlockNode = FilterableNode &
+  TypedNode &
   ParentNode & {
     kind: 'QueryBlock';
     name: string;
@@ -120,8 +121,6 @@ export type QueryBlockNode = FilterableNode &
   };
 
 export type Query = {
-  variables: QueryVariable[];
-  variableNameMap: NameMap;
   name?: string;
   blocks: QueryBlockNode[];
 };

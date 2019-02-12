@@ -72,12 +72,33 @@ const resolvers = {
       ].filter(Boolean); // filter out falsy values
       const [func, ...filters] = orderedFilters;
       return {
+        typeName: 'Movie',
         func,
         filter: dgraphql.filters.and(...filters),
         first: argNames.first,
         offset: argNames.offset,
       };
     }),
+
+    person: dgraphql.createQueryResolver(args => ({
+      typeName: 'Person',
+      func: dgraphql.filters.uid(args.id),
+    })),
+  },
+
+  Movie: {
+    id: dgraphql.createQueryResolver(_argNames => ({
+      value: 'uid',
+    })),
+    title: dgraphql.createQueryResolver(_argNames => ({
+      value: 'name',
+    })),
+  },
+
+  Person: {
+    id: dgraphql.createQueryResolver(_argNames => ({
+      value: 'uid',
+    })),
   },
 };
 
