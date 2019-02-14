@@ -1,3 +1,5 @@
+## Unmaintained. If you're looking for a project that got further down this path, see [here](https://github.com/dpeek/dgraphql) (you may want to fork that one). I'll probably not be migrating to Dgraph, but this was a fun way to learn about the GraphQL AST.
+
 > **Pre-Beta** This library is barely tested, the usage is not great, and the features are lacking. I would not use it. I'm still working. But, feel free to look around and give feedback.
 
 # What is it trying to do?
